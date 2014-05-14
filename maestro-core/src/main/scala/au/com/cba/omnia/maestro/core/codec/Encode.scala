@@ -1,9 +1,11 @@
 package au.com.cba.omnia.maestro.core
 package codec
 
-import au.com.cba.omnia.maestro.core.data._
 import scalaz._, Scalaz._
+
 import shapeless._
+
+import au.com.cba.omnia.maestro.core.data._
 
 case class Encode[A](run: A => List[Val]) {
   def contramap[B](f: B => A): Encode[B] =
@@ -41,9 +43,11 @@ object Encode extends TypeClassCompanion[Encode] {
   implicit def VectorEncode[A: Encode]: Encode[Vector[A]] =
     Encode.of[List[A]].contramap(_.toList)
 
-  implicit def ProductEncode[A]: Encode[A] =
+  /*implicit def ProductEncode[A]: Encode[A] =
+    //apply[A](implicitly[TypeClass[Encode]])
+    //macro GenericMacros.deriveInstance[Encode, A]
     macro TypeClass.derive_impl[Encode, A]
-
+   */
   implicit def EncodeTypeClass: ProductTypeClass[Encode] = new ProductTypeClass[Encode] {
     def emptyProduct =
       Encode(_ => List())

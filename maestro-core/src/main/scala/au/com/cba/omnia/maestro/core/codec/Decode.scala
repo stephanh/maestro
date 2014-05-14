@@ -1,10 +1,13 @@
 package au.com.cba.omnia.maestro.core
 package codec
 
-import au.com.cba.omnia.maestro.core.data._
 import scala.util.control.NonFatal
+
 import scalaz._, Scalaz._, \&/._
-import shapeless.{ProductTypeClass, TypeClassCompanion}
+
+import shapeless.{ProductTypeClass, ProductTypeClassCompanion, GenericMacros}
+
+import au.com.cba.omnia.maestro.core.data._
 
 sealed trait DecodeSource
 case class UnknownDecodeSource(source: List[String]) extends DecodeSource
@@ -31,12 +34,15 @@ case class Decode[A](run: (DecodeSource, Int) => DecodeResult[(DecodeSource, Int
     }))
 }
 
-object Decode extends TypeClassCompanion[Decode] {
+object Decode extends ProductTypeClassCompanion[Decode] {
   def decode[A: Decode](source: DecodeSource): DecodeResult[A] =
     Decode.of[A].decode(source)
 
-  def of[A: Decode]: Decode[A] =
+  def of[A: Decode]: Decode[A] = {
+    import auto._
     implicitly[Decode[A]]
+  }
+
 
   def ok[A](a: => A): Decode[A] =
     Decode((source, n) => DecodeOk((source, n, a)))
@@ -89,9 +95,6 @@ object Decode extends TypeClassCompanion[Decode] {
       loop(DecodeOk(Vector()), source, n)
     })
 
-  implicit def ProductDecode[A]: Decode[A] =
-    macro shapeless.TypeClass.derive_impl[Decode, A]
-
   implicit def DecodeTypeClass: ProductTypeClass[Decode] = new ProductTypeClass[Decode] {
     import shapeless._
 
@@ -139,4 +142,18 @@ object Decode extends TypeClassCompanion[Decode] {
       case _ =>
         DecodeError(source, n, NotEnoughInput(1, tag))
     })
+
+
+  import scala.language.experimental.macros
+  import shapeless._
+  implicit def ProductDecode[T](implicit ev: ProductTypeClass[Decode]): Decode[T] = //{
+    //auto.derive[T](DecodeTypeClass)
+    //macro shapeless.TypeClass.derive_impl[Decode, A]
+    macro GenericMacros.deriveProductInstance[Decode, T]
+  //}
+
+}
+
+object Test {
+  //val a = Decode.of[(String, Int)]
 }
