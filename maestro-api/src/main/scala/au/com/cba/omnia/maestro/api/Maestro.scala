@@ -45,4 +45,17 @@ object Maestro extends UnravelPipeImplicits with Load with View{
     m.matches
     s"${m.group(1)}-${m.group(2)}-${m.group(3)}-${m.group(4)}"
   }
+  
+    // TODO fix it so that files don't get written out if job fails.
+  def writeOutPaths(paths: List[String], file: String): Unit = {
+    val conf = new Configuration
+    val h = for {
+      _ <- Hdfs.create(file.toPath)
+      _ <- Hdfs.write(file.toPath, paths.mkString("\n"))
+      _ <- paths.map(p => Hdfs.create(s"$p/_PROCESSED".toPath)).sequence
+    
+    } yield ()
+
+    h.run(conf)
+  }
 }
