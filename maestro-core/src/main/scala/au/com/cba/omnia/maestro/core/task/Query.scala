@@ -14,5 +14,20 @@ import com.twitter.scrooge.ThriftStruct
 import com.twitter.scalding.typed.EmptyTypedPipe
 
 trait Query {
-  // hqlQuery goes here
+  def hqlQuery[A <: ThriftStruct : Manifest : Describe, B: Manifest : TupleSetter, C <: ThriftStruct : Manifest : Describe, D: TupleSetter : Manifest](env: String, args: Args, inputs: List[Partition[A, B]], output: Partition[C, D], query: String)
+   (implicit flowDef: FlowDef, mode: Mode): TypedPipe[D] = {
+    
+    val conf = new HiveConf()
+    val inputDescs = inputs.map(x => TableDescriptor(env, x))
+    val outputDesc = TableDescriptor(env, output)
+    
+    // 1. Add the hive job to the flow def
+    val inputSources: List[Source] = inputDescs.map(p =>
+        PartitionHiveParquetScroogeSource[A](p.qualifiedName, p.tablePath(conf), List(), conf, flowDef))
+    val outputSource: Source = PartitionHiveParquetScroogeSink[C, C](outputDesc.qualifiedName, outputDesc.tablePath(conf), List(), conf)
+    new HiveJob(args, env, query, flowDef, mode, inputSources, outputSource)
+   
+    // 2. Return the null pipe
+    EmptyTypedPipe(flowDef, mode)
+ }
 }

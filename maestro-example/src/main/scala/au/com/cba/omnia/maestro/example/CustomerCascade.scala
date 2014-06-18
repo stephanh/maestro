@@ -48,7 +48,10 @@ class CustomerCascade(args: Args) extends Maestro[Customer](args) {
   load[Customer]("|", inputs, errors, Maestro.now(), cleaners, validators, filter) |>
     ( view(Partition.byDate(Fields.EffectiveDate), dateView) _ &&&
       view(Partition.byFields2(Fields.CustomerCat, Fields.CustomerSubCat), catView)
-      )
+      // &&& { x =>
+      //    hqlQuery(env, args, List(Partition.byDate(Fields.EffectiveDate)), Partition.byDate(Fields.EffectiveDate)
+      //  , "INSERT OVERWRITE TABLE customers2 PARTITION (id) SELECT id,name,address,age FROM customers") }
+    )
 }
 
 class SplitCustomerCascade(args: Args) extends Maestro[Customer](args) {
