@@ -59,7 +59,7 @@ object Errors extends FieldConversions {
       .fork
       .map({
         case \/-(value) => value.asInstanceOf[A]
-        case _          => sys.error("trap")
+        case v          => sys.error("trap: The real error was: " + v.toString)
       })
 
   def safely[A](path: String)(p: TypedPipe[String \/ A])(implicit flow: FlowDef, mode: Mode): TypedPipe[A] =
