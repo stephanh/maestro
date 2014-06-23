@@ -39,19 +39,21 @@ class CustomerCascade(args: Args) extends Maestro[Customer](args) {
   )
 
   val validators    = Validator.all(
-    Validator.of(Fields.CustomerSubCat, Check.oneOf("M", "F")),
-    Validator.by[Customer](_.customerAcct.length == 4, "Customer accounts should always be a length of 4")
+    Validator.of(Fields.CustomerSubCat, Check.oneOf("M", "F"))
+    // , Validator.by[Customer](_.customerAcct.length == 6, "Customer accounts should always be a length of 5")
   )
 
   val filter        = RowFilter.keep
 
-  load[Customer]("|", inputs, errors, Maestro.now(), cleaners, validators, filter) |>
-    ( view(Partition.byDate(Fields.EffectiveDate), dateView) _ &&&
-      view(Partition.byFields2(Fields.CustomerCat, Fields.CustomerSubCat), catView)
-      // &&& { x =>
-      //    hqlQuery(env, args, List(Partition.byDate(Fields.EffectiveDate)), Partition.byDate(Fields.EffectiveDate)
-      //  , "INSERT OVERWRITE TABLE customers2 PARTITION (id) SELECT id,name,address,age FROM customers") }
-    )
+  // load[Customer]("|", inputs, errors, Maestro.now(), cleaners, validators, filter) |>
+    // view(Partition.byDate(Fields.EffectiveDate), dateView)
+    // a reduce, distinct elements // .distinct
+    // ( view(Partition.byDate(Fields.EffectiveDate), dateView) _ &&&
+      // view(Partition.byFields2(Fields.CustomerCat, Fields.CustomerSubCat), catView) &&&
+      // { x =>
+         hqlQuery(env, args, List(HivePartition.byDate(Fields.EffectiveDate)), HivePartition.byDate(Fields.EffectiveDate)
+       , "INSERT OVERWRITE TABLE customers2 PARTITION (id) SELECT id,name,address,age FROM customers") // }
+    // )
 }
 
 class SplitCustomerCascade(args: Args) extends Maestro[Customer](args) {
@@ -71,7 +73,7 @@ class SplitCustomerCascade(args: Args) extends Maestro[Customer](args) {
 
   val validators    = Validator.all(
     Validator.of(Fields.CustomerSubCat, Check.oneOf("M", "F")),
-    Validator.by[Customer](_.customerAcct.length == 4, "Customer accounts should always be a length of 4")
+    Validator.by[Customer](_.customerAcct.length == 7, "Customer accounts should always be a length of 5")
   )
 
   val filter        = RowFilter.keep

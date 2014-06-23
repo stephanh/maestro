@@ -100,7 +100,7 @@ object build extends Build {
     (uniformAssemblySettings: Seq[Sett]) ++
     (uniformThriftSettings: Seq[Sett]) ++
     Seq[Sett](
-     libraryDependencies ++= depend.hadoop()
+     libraryDependencies ++= depend.hadoop() ++ depend.scalding()
     )
   ).dependsOn(core)
    .dependsOn(macros)
