@@ -22,6 +22,7 @@ import au.com.cba.omnia.uniform.core.version.UniqueVersionPlugin._
 import au.com.cba.omnia.uniform.dependency.UniformDependencyPlugin._
 import au.com.cba.omnia.uniform.thrift.UniformThriftPlugin._
 import au.com.cba.omnia.uniform.assembly.UniformAssemblyPlugin._
+import au.com.cba.omnia.abjectjar.Plugin._
 
 import au.com.cba.omnia.humbug.HumbugSBT._
 
@@ -101,7 +102,8 @@ object build extends Build {
     (uniformThriftSettings: Seq[Sett]) ++
     Seq[Sett](
      libraryDependencies ++= depend.hadoop() ++ depend.scalding()
-    )
+    ) ++
+    abjectJarSettings
   ).dependsOn(core)
    .dependsOn(macros)
    .dependsOn(api)

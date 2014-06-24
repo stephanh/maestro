@@ -28,3 +28,5 @@ addSbtPlugin("au.com.cba.omnia" % "uniform-thrift"     % uniformVersion)
 addSbtPlugin("au.com.cba.omnia" % "uniform-assembly"   % uniformVersion)
 
 addSbtPlugin("au.com.cba.omnia" % "humbug-plugin"      % "0.2.0-20140604045236-c8018a9")
+
+addSbtPlugin("au.com.cba.omnia" % "abject-jar" % "0.0.4")
