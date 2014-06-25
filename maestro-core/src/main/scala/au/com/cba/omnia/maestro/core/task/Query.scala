@@ -38,9 +38,9 @@ trait Query {
     
     // 1. Add the hive job to the flow def
     val inputSources: List[Source] = inputDescs.map(p =>
-        PartitionHiveParquetScroogeSource[A](p.qualifiedName, p.tablePath(conf), p.partitions, conf, flowDef))
+        PartitionHiveParquetScroogeSource[A](p.qualifiedName, p.tablePath(conf), p.partitions, conf))
     val outputSource: Source = PartitionHiveParquetScroogeSink[C, C](outputDesc.qualifiedName, outputDesc.tablePath(conf), outputDesc.partitions, conf)
-    val job = new HiveJob(args, env, query, flowDef, mode, inputSources, outputSource)
+    val job = new HiveJob(args, env, query, inputSources, outputSource)
     job.buildFlow
     
     // 2. Return the null pipe
