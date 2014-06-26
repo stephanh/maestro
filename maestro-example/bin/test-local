@@ -1,11 +1,11 @@
 #!/bin/sh -eux
 
-./sbt '; clean; project example; clean; assembly'
+./sbt '; clean; project example; clean; abject-jar'
 
 JOB="au.com.cba.omnia.maestro.example.CustomerCascade"
 PROJECT=$(dirname $0)/..
 TARGET=${PROJECT}/target/test-local
-JAR=${PROJECT}/target/scala-2.10/maestro-example-assembly-*.jar
+JAR=${PROJECT}/target/scala-2.10/maestro-example*.jar
 JAR_NAME=$(basename ${JAR})
 
 [ ! -d "${PROJECT}/target/test-local" ] || rm -rf ${PROJECT}/target/test-local

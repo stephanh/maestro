@@ -21,18 +21,30 @@ import com.twitter.scalding._, TDsl._
 
 import com.twitter.scrooge.ThriftStruct
 
+import org.apache.hadoop.hive.conf.HiveConf
 import au.com.cba.omnia.ebenezer.scrooge.PartitionParquetScroogeSource
 
 import au.com.cba.omnia.maestro.core.partition.Partition
+import hive._
+import scalding._
+import codec._
+import au.com.cba.omnia.ebenezer.scrooge.hive._
+import com.twitter.scalding._
+import org.apache.hadoop.hive.conf.HiveConf
+import au.com.cba.omnia.ebenezer.scrooge.hive.HiveJob
+import cascading.flow.FlowDef
+import partition._
+import com.twitter.scrooge.ThriftStruct
 
 trait View {
   /** Partitions a pipe using the given partition scheme and writes out the data.*/
-  def view[A <: ThriftStruct : Manifest, B: Manifest: TupleSetter]
-    (partition: Partition[A, B], output: String)
+  def view[A <: ThriftStruct : Manifest : Describe, B: Manifest: TupleSetter]
+    (env: String, partition: Partition[A, B], output: String)
     (pipe: TypedPipe[A])
     (implicit flowDef: FlowDef, mode: Mode): Unit = {
+    val conf = new HiveConf()
     pipe
       .map(v => partition.extract(v) -> v)
-      .write(PartitionParquetScroogeSource[B, A](partition.pattern, output))
+      .write(PartitionHiveParquetScroogeSink[B, A](env, output, TableDescriptor("", partition).partitions, conf))
   }
 }

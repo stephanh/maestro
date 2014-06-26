@@ -38,8 +38,8 @@ case class TableDescriptor[A <: ThriftStruct : Manifest : Describe, B: Manifest:
     new ParquetTableDescriptor(database, describe.name, columnNames, columnTypes, partition.fieldNames.toArray)
   }
 
-  def tablePath(hiveConf: HiveConf) =
-    s"${hiveConf.getVar(HiveConf.ConfVars.METASTOREWAREHOUSE)}/${database}/${name}"
+  def tablePath(hiveConf: HiveConf) = name
+    // s"${hiveConf.getVar(HiveConf.ConfVars.METASTOREWAREHOUSE)}/${database}/${name}"
 
   def name = {Describe.of[A].name}
 
@@ -53,7 +53,7 @@ case class TableDescriptor[A <: ThriftStruct : Manifest : Describe, B: Manifest:
       namesWithTypes(name.drop(1).toInt - 1)._2.`type`)))
   }
 
-  def qualifiedName = {database + "." + name}
+  def qualifiedName = name.toLowerCase
 
   def createScheme() = new ParquetScroogeScheme[A]
 }

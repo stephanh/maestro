@@ -29,8 +29,9 @@ class CustomerCascade(args: Args) extends Maestro[Customer](args) {
   val inputs        = Guard.expandPaths(s"${env}/source/${domain}/*")
   val outbound      = s"${env}/outbound/${domain}"
   val analytics     = s"${env}/view/warehouse/${domain}"
-  val dateView      = s"${env}/view/warehouse/${domain}/by-date"
-  val catView       = s"${env}/view/warehouse/${domain}/by-cat"
+  val dateTable     = "by_date"
+  val catTable      = "by_cat"
+  def tableView(table: String) = s"${env}/view/warehouse/${domain}/$table"
   val errors        = s"${env}/errors/${domain}"
 
   val cleaners      = Clean.all(
@@ -44,16 +45,16 @@ class CustomerCascade(args: Args) extends Maestro[Customer](args) {
   )
 
   val filter        = RowFilter.keep
-
-  // load[Customer]("|", inputs, errors, Maestro.now(), cleaners, validators, filter) |>
-    // view(Partition.byDate(Fields.EffectiveDate), dateView)
-    // a reduce, distinct elements // .distinct
-    // ( view(Partition.byDate(Fields.EffectiveDate), dateView) _ &&&
-      // view(Partition.byFields2(Fields.CustomerCat, Fields.CustomerSubCat), catView) &&&
-      // { x =>
-         hqlQuery(env, args, List(HivePartition.byDate(Fields.EffectiveDate)), HivePartition.byDate(Fields.EffectiveDate)
-       , "INSERT OVERWRITE TABLE customers2 PARTITION (id) SELECT id,name,address,age FROM customers") // }
-    // )
+  val jobs = List(
+    new Job(args) { 
+      load[Customer]("|", inputs, errors, Maestro.now(), cleaners, validators, filter) |>
+        ( view(env, Partition.byField(Fields.EffectiveDate), dateTable) _ &&&
+          view(env, Partition.byFields2(Fields.CustomerCat, Fields.CustomerSubCat), tableView(catTable))
+        )
+    },
+      hqlQuery(env, args, List(HivePartition.byField(Fields.EffectiveDate)), HivePartition.byField(Fields.CustomerCat)
+      , s"INSERT OVERWRITE TABLE $dateTable PARTITION (id) SELECT id,name,address,age FROM $catTable")
+    )
 }
 
 class SplitCustomerCascade(args: Args) extends Maestro[Customer](args) {
@@ -78,11 +79,15 @@ class SplitCustomerCascade(args: Args) extends Maestro[Customer](args) {
 
   val filter        = RowFilter.keep
   
-  load[Customer]("|", inputs, errors, Maestro.now(), cleaners, validators, filter)
-    .map(split[Customer,(Customer, Customer, Customer)]) >>*
-  (
-    view(Partition.byDate(Fields.EffectiveDate), dateView),
-    view(Partition.byFields2(Fields.CustomerCat, Fields.CustomerSubCat), catView),
-    view(Partition.byDate(Fields.EffectiveDate), dateView)
-  )
+  val jobs = List(
+    new Job(args) {
+      load[Customer]("|", inputs, errors, Maestro.now(), cleaners, validators, filter)
+        .map(split[Customer,(Customer, Customer, Customer)]) >>*
+        (
+          view(env, Partition.byDate(Fields.EffectiveDate), dateView),
+          view(env, Partition.byFields2(Fields.CustomerCat, Fields.CustomerSubCat), catView),
+          view(env, Partition.byDate(Fields.EffectiveDate), dateView)
+        )
+      }
+    )
 }
