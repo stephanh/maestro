@@ -19,7 +19,6 @@ package object api {
   type Clean           = au.com.cba.omnia.maestro.core.clean.Clean
   type Validator[A]    = au.com.cba.omnia.maestro.core.validate.Validator[A]
   type RowFilter       = au.com.cba.omnia.maestro.core.filter.RowFilter
-  type Cascade         = au.com.cba.omnia.maestro.core.scalding.Cascade
 
   val Partition     = au.com.cba.omnia.maestro.core.partition.Partition
   val HivePartition = au.com.cba.omnia.maestro.core.partition.HivePartition

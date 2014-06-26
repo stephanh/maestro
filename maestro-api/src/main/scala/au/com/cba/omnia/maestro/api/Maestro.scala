@@ -29,8 +29,8 @@ import au.com.cba.omnia.maestro.core.scalding.UnravelPipeImplicits
 
 import au.com.cba.omnia.maestro.macros.SplitMacro
 
-class Maestro[A <: ThriftStruct](args: Args) extends Job(args) with MacroSupport[A] {
-
+abstract class Maestro[A <: ThriftStruct](args: Args) extends CascadeJob(args) with MacroSupport[A] {
+  override def validate { /* workaround for scalding bug, yep, yet another one, no nothing works */ }
 }
 
 object Maestro extends UnravelPipeImplicits with Load with View with Query {
