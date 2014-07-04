@@ -17,6 +17,8 @@ import Keys._
 
 import com.twitter.scrooge.ScroogeSBT._
 
+import sbtassembly.Plugin._, AssemblyKeys._
+
 import au.com.cba.omnia.uniform.core.standard.StandardProjectPlugin._
 import au.com.cba.omnia.uniform.core.version.UniqueVersionPlugin._
 import au.com.cba.omnia.uniform.dependency.UniformDependencyPlugin._
@@ -25,7 +27,6 @@ import au.com.cba.omnia.uniform.assembly.UniformAssemblyPlugin._
 
 import au.com.cba.omnia.humbug.HumbugSBT._
 
-import sbtassembly.Plugin._, AssemblyKeys._
 
 object build extends Build {
   type Sett = Def.Setting[_]
@@ -47,6 +48,7 @@ object build extends Build {
   , base = file("maestro-api")
   , settings =
        standardSettings
+    ++ uniformThriftSettings
     ++ uniform.project("maestro", "au.com.cba.omnia.maestro.api")
     ++ Seq[Sett](
       libraryDependencies ++= depend.hadoop() ++ depend.testing() ++ depend.omnia("edge", "2.1.0-20140604032756-0c0abb1")
@@ -64,13 +66,16 @@ object build extends Build {
       sourceGenerators in Compile <+= sourceManaged in Compile map { outDir: File =>
         GenUnravelPipes.gen(outDir)
       },
+      scroogeThriftSourceFolder in Test <<=
+         (sourceDirectory) { _ / "test" / "thrift" / "scrooge" },
       libraryDependencies ++= Seq(
         "com.google.code.findbugs" % "jsr305"    % "2.0.3" // Needed for guava.
-      , "com.google.guava"         %  "guava"    % "16.0.1"
+      , "com.google.guava"         % "guava"     % "16.0.1"
       ) ++ depend.scalaz() ++ depend.scalding() ++ depend.hadoop()
         ++ depend.shapeless() ++ depend.testing()
-        ++ depend.omnia("ebenezer-hive", "0.4.0-20140616005433-9237875")
+        ++ depend.omnia("ebenezer-hive", "0.6.0-20140703014326-ca7caad")
         ++ depend.omnia("humbug-core", "0.2.0-20140604045236-c8018a9")
+        ++ Seq("au.com.cba.omnia" %% "thermometer" % "0.1.0-20140621121315-e002b2f" % "test")
     )
   )
 
