@@ -49,6 +49,7 @@ object Schema extends Parsers {
   type Elem = PositionalToken[Token]
 
 
+  // --------------------------------------------------------------------------
   /** Invokes the parser on a string.
    *
    *  The string is first converted to a sequence of tokens using TableLexer.
@@ -79,6 +80,38 @@ object Schema extends Parsers {
       case failure : NoSuccess => Left (failure) }
 
 
+  // --------------------------------------------------------------------------
+  /** Invokes the parser on a string.
+   *
+   *  The string is first converted to a sequence of tokens using TableLexer.
+   *  The token sequence is then parsed by this parser.
+   *
+   *  @param  input string to parse
+   *  @return either no success, or the parsed schema table
+   */
+  def parseTaste(input: String): Either[NoSuccess, Seq[Histogram]] =
+    Lexer(input) match {
+      case Left(Lexer.Error   (msg, nextChar)) 
+        => Left(Error  (msg, SequenceReader.empty))
+
+      case Left(Lexer.Failure (msg, nextChar))
+        => Left(Failure(msg, SequenceReader.empty))
+
+      case Right(tokens) => parseTaste(tokens)
+    }
+
+  /** Invokes the parser on a list of PositionalTokens.
+   *
+   *  @param  input sequence of positional tokens to parse
+   *  @return either no success, or the parsed schema table
+   */
+  def parseTaste(input: List[Elem]): Either[NoSuccess, Seq[Histogram]] = 
+    phrase(pTaste)(new SequenceReader(input)) match {
+      case Success(result, _)  => Right(result)
+      case failure : NoSuccess => Left (failure) }
+
+
+  // ---------------------------------------------------------------------------
   // Parse a %table expression: %table dbname.tablename;
   case class TableId(database: String, table: String)
 
@@ -163,9 +196,7 @@ object Schema extends Parsers {
     = ( pTopeSyntax   ^^ { x: (Tope, Syntax) => x match {
           case (t, s) => ClasTope(t, s)  }}
 
-      | pSyntax       ^^ { x: Syntax          =>  ClasSyntax(x) }
-
-      | err("unknown tope or syntax name"))
+      | pSyntax       ^^ { x: Syntax          =>  ClasSyntax(x) })
 
   // Parse a tope with its syntax.
   def pTopeSyntax: Parser[(Tope, Syntax)] 
@@ -178,7 +209,8 @@ object Schema extends Parsers {
     = Topes.topeSyntaxes
       .toSeq
       .map { case (tope, syntax) 
-              =>  (psCtor(tope.name) ~ pTok(KPeriod) ~ psCtor(syntax.name)) ^^^ ((tope, syntax)) }
+              =>  (psCtor(tope.name) ~ pTok(KPeriod) ~ 
+                    psCtor(syntax.name)) ^^^ ((tope, syntax)) }
       .reduce(_ | _)
 
   // Parse a Day tope, with one of its syntaxes.
@@ -235,19 +267,29 @@ object Schema extends Parsers {
     = psCtor("DDcMMcYYYY") ~! pTok(KBra) ~! pChar ~! pTok(KKet) ^^
         { case _ ~ _ ~ c ~ _ => tope.DDcMMcYYYY(c) }
 
+
+  // --------------------------------------------------------------------------
+  // Parse a sequence of Histograms.
+  //  This is what we get from tasting a table.
+  def pTaste: Parser[List[Histogram]]
+    = rep(pTasteColumn) 
+
+  // Taste of a single column. 
+  def pTasteColumn: Parser[Histogram]
+    = pHistogram <~ pTok(KSemi)
+
+
   // --------------------------------------------------------------------------
   // Parse a Histogram.
   def pHistogram: Parser[Histogram]
-    = pCounts ^^ { case c => Histogram(c) }
+    = repsep(pItem, pTok(KComma)) ^^ 
+        { case ls : List[(Classifier, Int)] => Histogram(ls.toMap) }
 
-  def pCounts: Parser[Map[Classifier, Int]] = {
-    val pItem: Parser[(Classifier, Int)] =
-      (pClassifier
+  def pItem: Parser[(Classifier, Int)] 
+    = (pClassifier
         ~! (pTok(KColon) | err("expected colon after tope or syntax name"))
         ~! (pNat         | err("expected the number of occurrences of the tope"))
-      ) ^^ { case tope ~ _ ~ number => (tope, number) }
-     repsep(pItem, pTok(KComma))
-  }.map(items => Map(items :_*))
+      ) ^^ { case clas ~ _ ~ number => (ClasSyntax(syntax.Any), number) }
 
 
   // --------------------------------------------------------------------------

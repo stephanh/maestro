@@ -1,0 +1,96 @@
+%table  pr_gdw_pvtech.acct_limt;
+
+acct_i  | string 
+        | CbaAccount.CbaAccountCode 
+        | CbaAccount.CbaAccountCode:1000;
+
+limt_c  | string 
+        | - 
+        | AlphaNum:1000;
+
+efft_d  | string 
+        | Day.YYYYcMMcDD('-') + Exact("0001-01-01")
+        | Day.YYYYcMMcDD('-'):969, Exact("0001-01-01"):31;
+
+expy_d  | string 
+        | Day.YYYYcMMcDD('-') + Exact("9999-12-31")
+        | Exact("9999-12-31"):1000;
+
+limt_a  | double 
+        | Real
+        | Real:1000;
+
+pros_key_efft_i         
+        | bigint
+        | Null + Nat
+        | Null:1, Nat:999;
+
+pros_key_expy_i         
+        | bigint 
+        | Null + Nat
+        | Null:1000;
+
+eror_seqn_i             
+        | bigint 
+        | Null + Nat
+        | Null:1000;
+
+limt_vald_from_d        
+        | string 
+        | Empty + Day.YYYYcMMcDD('-')
+        | Empty:749, Day.YYYYcMMcDD('-'):251;
+
+limt_vald_to_d          
+        | string 
+        | Empty + Day.YYYYcMMcDD('-') + Exact("9999-12-31")
+        | Empty:749, Day.YYYYcMMcDD('-'):1, Exact("9999-12-31"):250;
+
+srce_syst_c             
+        | string 
+        | Empty + CbaSystem.CbaSystemCode
+        | Empty:749, CbaSystem.CbaSystemCode:251;
+
+row_secu_accs_c         
+        | bigint 
+        | Null + Nat                                    
+        | Nat:1000;
+
+cncy_c  | string                 
+        | Empty + Currency.CurrencyCode 
+        | Empty:217, Currency.CurrencyCode:783;
+
+record_deleted_flag     
+        | smallint
+        | Null + Nat
+        | Nat:1000;
+
+ctl_id  | smallint
+        | Null + Nat
+        | Null:1000;
+
+process_name            
+        | string 
+        | -
+        | Any:1000;
+
+process_id
+        | int    
+        | Null + Nat
+        | Null:1000;
+
+update_process_name
+        | string 
+        | Empty
+        | Empty:1000;
+
+update_process_id
+        | int    
+        | Null + Nat
+        | Null:1000;
+
+recd_stus
+        | string 
+        | Null + Exact("ACTIVE") + Exact("INACTIVE")
+        | Exact("ACTIVE"):1000;
+
+

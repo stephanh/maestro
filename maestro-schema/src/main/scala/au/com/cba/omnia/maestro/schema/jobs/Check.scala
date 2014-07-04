@@ -44,11 +44,9 @@ class Check(args: Args)
   // Read the schema definition.
   val strSchema = 
     Source.fromFile(nameSchema)
-      .getLines
-      .map { _ + "\n" }
-      .reduceLeft(_+_)
+      .getLines .map { _ + "\n" } .reduceLeft(_+_)
 
-  // Throw an exception if the schema didn't parse.
+  // Parse the schema definition.
   val schema = 
     parser.Schema(strSchema) match { 
       case Left(err) => throw new Exception("schema parse error: " + err.toString())

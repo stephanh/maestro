@@ -25,7 +25,7 @@ import scala.io.Source
 /** Arguments for `Squash` command .*/
 class SquashArgs extends FieldArgs {
   @Required
-  var histogram: String = _
+  var taste: String = _
 }
 
 
@@ -37,12 +37,18 @@ object Squash extends ArgMain[SquashArgs]
   def main(args: SquashArgs): Unit = {
 
     // Read the histogram file
-    val strHistogram =
-      Source.fromFile(args.histogram)
-        .getLines
-        .map { _ + "\n" }
-        .reduceLeft (_+_)
+    val strTaste =
+      Source.fromFile(args.taste)
+        .getLines .map { _ + "\n" } .reduceLeft (_+_)
 
-      println(strHistogram)
+    // Parse the schema definition.
+    val schema =
+      parser.Taste(strTaste) match {
+        case Left(err)  
+         => throw new Exception("taste parse error: " ++ err.toString())
+        case Right(s) => s
+      }
+
+    println(strTaste)
   }
 }
