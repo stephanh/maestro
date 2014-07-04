@@ -42,7 +42,7 @@ import Lexer._
  * useful information regarding the location of the error, which can be reported
  * to the user.
  */
-object Parser extends Parsers {
+object Schema extends Parsers {
 
   /** Element type (we parse Lexer tokens). 
    */

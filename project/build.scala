@@ -89,8 +89,9 @@ object build extends Build {
       sourceGenerators in Compile <+= sourceManaged in Compile map { outDir: File =>
         GenUnravelPipes.gen(outDir)
       },
-      libraryDependencies ++= 
-           depend.scalding() ++ depend.hadoop()
+      libraryDependencies ++= Seq (
+        "com.quantifind"  %% "sumac"  % "0.3.0"
+      ) ++ depend.scalding() ++ depend.hadoop()
     )
   )
 
@@ -120,7 +121,7 @@ object build extends Build {
     (uniformAssemblySettings: Seq[Sett]) ++
     (uniformThriftSettings: Seq[Sett]) ++
     Seq[Sett](
-     libraryDependencies ++= depend.hadoop()
+      libraryDependencies ++= depend.hadoop()
     )
   ).dependsOn(core)
    .dependsOn(macros)

@@ -21,7 +21,6 @@ import org.apache.commons.lang.StringEscapeUtils._
 import com.twitter.scalding._, Dsl._, TDsl._
 
 import au.com.cba.omnia.maestro.schema._
-import au.com.cba.omnia.maestro.schema.parser._
 import au.com.cba.omnia.maestro.schema.hive.Input
 
 // TODO: limit the number of bad rows output by a flag.
@@ -51,7 +50,7 @@ class Check(args: Args)
 
   // Throw an exception if the schema didn't parse.
   val schema = 
-    Parser(strSchema) match { 
+    parser.Schema(strSchema) match { 
       case Left(err) => throw new Exception("schema parse error: " + err.toString())
       case Right(s)  => s
     }
