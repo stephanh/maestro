@@ -154,7 +154,7 @@ object Load {
     (implicit flowDef: FlowDef, mode: Mode): TypedPipe[A] = {
     val pipe =
       in
-        .map(row => splitter.run(row.line) ++ row.extraFields)
+        .map(row => Splitter.split(splitter, row.line) ++ row.extraFields)
         .flatMap(filter.run(_).toList)
         .map(record =>
           Tag.tag[A](record).map { case (column, field) => clean.run(field, column) }

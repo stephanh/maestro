@@ -32,35 +32,22 @@ import com.google.common.base.{Splitter => GoogSplitter}
   * splitters try to do "sensible" things if they see something incorrect, where
   * "sensible" means return a result that will cause a sensible error later.
   */
-case class Splitter(run: String => List[String])
+sealed trait Splitter
+case class Custom(run: String => List[String]) extends Splitter
+case class Delimited(delimiter: String) extends Splitter
+case class Fixed(lengths: List[Int]) extends Splitter
 
 /** Factory for [[au.com.cba.omnia.maestro.core.split.Splitter]] instances.  */
 object Splitter {
 
-  /**
-    * Creates a splitter that splits delimited strings.
-    *
-    * Valid for all input.
-    */
-  def delimited(delimiter: String) = {
-    val splitter = GoogSplitter.on(delimiter)
-    Splitter(s => splitter.split(s).asScala.toList)
-  }
+  def split(splitter: Splitter, s: String) = splitter match {
+    case Custom(splitter) => splitter(s)
+    case Delimited(delimiter) => GoogSplitter.on(delimiter).split(s).asScala.toList
+    case Fixed(lengths) => {
+      val starts = lengths.scanLeft(0)(_ + _)
+      val ends = starts.tail
+      val totalLength = starts.last
 
-  /**
-    * Creates a splitter that splits according to predefined column lengths.
-    *
-    * Valid on strings containing exactly the number of characters required to
-    * fill all columns.
-    *
-    * When passed invalid input (wrong number of characters), we ensure that
-    * `Splitter.fixed(lengths).run(invalid).length != lengths.length`.
-    */
-  def fixed(lengths: List[Int]) = {
-    val starts = lengths.scanLeft(0)(_ + _)
-    val ends = starts.tail
-    val totalLength = starts.last
-    Splitter(s =>
       // we try to be "sensible" by ensuring that, if s has incorrect length,
       // the number of values we return != lengths.length
 
@@ -80,6 +67,27 @@ object Splitter {
       else {
         (starts, ends).zipped.map(s.substring(_,_))
       }
-    )
+    }
   }
+
+  /** Creates a splitter with a custom splitting function */
+  def custom(splitter: String => List[String]) = Custom(splitter)
+
+  /**
+    * Creates a splitter that splits delimited strings.
+    *
+    * Valid for all input.
+    */
+  def delimited(delimiter: String) = Delimited(delimiter)
+
+  /**
+    * Creates a splitter that splits according to predefined column lengths.
+    *
+    * Valid on strings containing exactly the number of characters required to
+    * fill all columns.
+    *
+    * When passed invalid input (wrong number of characters), we ensure that
+    * `Splitter.fixed(lengths).run(invalid).length != lengths.length`.
+    */
+  def fixed(lengths: List[Int]) = Fixed(lengths)
 }

@@ -43,12 +43,12 @@ Splitter properties
 
   val delimitedNum: Prop = Prop.forAll(delimitedStr) (str => {
     val numDelimiters = str.count(_ == delimiterChr)
-    val segments      = Splitter.delimited(delimiter).run(str)
+    val segments      = Splitter.split(Splitter.delimited(delimiter), str)
     segments.length must_== (numDelimiters+1)
   })
 
   val delimitedRoundTrip: Prop = Prop.forAll(delimitedStr) (str => {
-    val segments = Splitter.delimited(delimiter).run(str)
+    val segments = Splitter.split(Splitter.delimited(delimiter), str)
     segments.mkString(delimiter) must_== str
   })
 
@@ -67,17 +67,17 @@ Splitter properties
   } yield (lengths, row)
 
   val fixedBadLength: Prop = Prop.forAll(badFixedLengthStr) { case (lengths, str) => {
-    val segments = Splitter.fixed(lengths).run(str)
+    val segments = Splitter.split(Splitter.fixed(lengths), str)
     segments.length must_!= lengths.length
   }}
 
   val fixedNum: Prop = Prop.forAll(goodFixedLengthStr) { case (lengths, str) => {
-    val segments = Splitter.fixed(lengths).run(str)
+    val segments = Splitter.split(Splitter.fixed(lengths), str)
     segments.length must_== lengths.length
   }}
 
   val fixedRoundTrip: Prop = Prop.forAll(goodFixedLengthStr) { case (lengths, str) => {
-    val segments = Splitter.fixed(lengths).run(str)
+    val segments = Splitter.split(Splitter.fixed(lengths), str)
     segments.mkString must_== str
   }}
 }
