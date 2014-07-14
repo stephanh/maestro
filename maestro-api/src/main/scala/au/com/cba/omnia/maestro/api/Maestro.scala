@@ -41,10 +41,10 @@ abstract class MaestroCascade[A <: ThriftStruct](args: Args) extends CascadeJob(
 /** Parent class for a simple maestro job that does not need to use cascades or run hive queries.*/
 abstract class Maestro[A <: ThriftStruct](args: Args) extends Job(args) with MacroSupport[A]
 
-object Maestro extends UnravelPipeImplicits with Load with View with Query {
+object Maestro extends UnravelPipeImplicits with Load with View with Query with Tributary {
   /**
     * Splits the given struct A into a tuple of smaller thrift structs by matching the field names.
-    * 
+    *
     * It can duplicate the same original field across several structs, rearrange field order and
     * skip fields.
     */
@@ -78,5 +78,5 @@ object Maestro extends UnravelPipeImplicits with Load with View with Query {
     */
   def createFlagFile(directoryPath : List[String]):Unit={
     directoryPath foreach ((x)=> Hdfs.create(Hdfs.path(s"$x/_PROCESSED")).run(new Configuration))
-  }  
+  }
 }
