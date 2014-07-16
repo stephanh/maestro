@@ -25,10 +25,10 @@ import com.cba.omnia.edge.hdfs.{Hdfs, Result}
 sealed trait PushAction
 
 /** The file was copied to HDFS */
-case class Copied() extends PushAction
+case object Copied extends PushAction
 
 /** The file already existed in HDFS */
-case class AlreadyExists() extends PushAction
+case object AlreadyExists extends PushAction
 
 /** Represents a successfull push to HDFS */
 case class Pushed(soure: DataFile, dest: Path, action: PushAction)
@@ -50,8 +50,8 @@ object GenericPush {
     */
   def processTheFile(src: DataFile, hdfsLandingDir: String, archiveDir: String,
     destSubDir: String): Hdfs[Pushed] = {
-    val hdfsDestDir = Hdfs.path(hdfsLandingDir + File.separator + destSubDir + File.separator + src.fileSubDir)
-    val archiveDestDir = new File(archiveDir + File.separator + destSubDir + File.separator + src.fileSubDir)
+    val hdfsDestDir = Hdfs.path(List(hdfsLandingDir, destSubDir, src.fileSubDir).mkString(File.separator))
+    val archiveDestDir = new File(List(archiveDir, destSubDir, src.fileSubDir).mkString(File.separator))
 
     for {
       pushed <- copyToHdfs(src, hdfsDestDir)
@@ -77,18 +77,18 @@ object GenericPush {
         for {
           exists <- Hdfs.exists(destFile)
           _      <- EdgeOp.failHdfsIf(!exists)("The file does not already exist")
-        } yield AlreadyExists(),
+        } yield AlreadyExists,
 
         // if file does not exist, try to copy file over
         for {
           _      <- Hdfs.copyFromLocalFile(src.file, destDir)
           exists <- Hdfs.exists(destFile)
           _      <- EdgeOp.failHdfsIf(!exists)("Hdfs ops succeeded, but the file was not created")
-        } yield Copied())
+        } yield Copied)
 
     } yield Pushed(src, destFile, pushAct)
 
-    Failure.wrapHdfs[Pushed](s"Copy to hdfs has failed for ${src.file}")(action)
+    EdgeOp.wrapHdfsErr[Pushed](s"Copy to hdfs has failed for ${src.file}")(action)
   }
 
   /**
@@ -113,7 +113,7 @@ object GenericPush {
         _      <- EdgeOp.failHdfsIf(!exists)("")
       } yield ())
 
-    Failure.wrapHdfs[Unit](s"Cannot create ingestion flag in $destDir")(action)
+    EdgeOp.wrapHdfsErr[Unit](s"Cannot create ingestion flag in $destDir")(action)
   }
 
   /**
@@ -122,7 +122,7 @@ object GenericPush {
     * Succeeds if the file already exists in archive dir.
     */
   def archiveFile(srcFile: File, destDir: File): Result[Unit] =
-    Failure.wrap(s"The archive has failed for $srcFile") {
+    EdgeOp.wrapErr(s"The archive has failed for $srcFile") {
       val destFile   = new File(destDir, srcFile.getName)
       val fileExists = destFile.isFile
       val dirExists  = destDir.isDirectory

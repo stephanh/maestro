@@ -75,6 +75,7 @@ object build extends Build {
         ++ depend.omnia("ebenezer-hive", "0.6.0-20140708061543-e140eba")
         ++ depend.omnia("humbug-core", "0.2.0-20140604045236-c8018a9")
         ++ depend.omnia("edge", "2.1.0-20140604032756-0c0abb1")
+        ++ depend.omnia("omnitool-time", "1.2.0-20140714061557-6131b76")
         ++ Seq("au.com.cba.omnia" %% "thermometer" % "0.1.0-20140621121315-e002b2f" % "test")
     )
   )

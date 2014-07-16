@@ -15,6 +15,8 @@
 package au.com.cba.omnia.maestro.core
 package tributary
 
+import scalaz.\&/.{This, That, Both}
+
 import com.cba.omnia.edge.hdfs.{Hdfs, Result}
 
 /**
@@ -24,13 +26,11 @@ import com.cba.omnia.edge.hdfs.{Hdfs, Result}
   */
 object EdgeOp {
 
-  /**
-    * Returns a an exception Result if a predicate is false,
-    * otherwise returns a `Unit` Result success
-    */
+  /** Returns an exception Result if a predicate is false. */
   def failIf(b: Boolean)(msg: String): Result[Unit] =
     if (b) Result.fail(msg) else Result.ok(())
 
+  /** Fails the Hdfs computation if a predicate is false. */
   def failHdfsIf(b: Boolean)(msg: String): Hdfs[Unit] =
     Hdfs.result(failIf(b)(msg))
 
@@ -40,14 +40,38 @@ object EdgeOp {
     * If the first action fails, only the results of the second
     * acion are returned.
     */
-  def or[A](hdfs1:Hdfs[A], hdfs2:Hdfs[A]) =
+  def or[A](hdfs1: Hdfs[A], hdfs2: Hdfs[A]) =
     Hdfs(conf => hdfs1.run(conf).fold(a => Result.ok(a), _ => hdfs2.run(conf)))
 
   /**
     * Maps over the result of a Hdfs action, allowing you to
     * work with the errors as well as the success value.
     */
-  def mapResult[A,B](f: Result[A] => Result[B])(hdfs:Hdfs[A]) =
+  def mapResult[A,B](f: Result[A] => Result[B])(hdfs: Hdfs[A]) =
     Hdfs(hdfs.run andThen f)
 
+  /**
+    * Wrap the error (if any) in a `Result`
+    *
+    * In order to compose errors, I have to view the Result error type as
+    * representing a list of errors. This function treats the error's string
+    * field, if it exists, as the first item in the list, followed by the
+    * error's exception field, followed by the error's exception cause chain.
+    */
+  def wrapErr[A](msg: String)(result: Result[A]): Result[A] =
+    result.fold(a => Result.ok(a), err => Result.error(msg, err match {
+      case This(inner)      => new Throwable(inner)
+      case That(exn)        => exn
+      case Both(inner, exn) => new Throwable(inner, exn)
+    }))
+
+  /** Wrap the error (if any) from a `Hdfs` action
+    *
+    * In order to compose errors, I have to view the Result error type as
+    * representing a list of errors. This function treats the error's string
+    * field, if it exists, as the first item in the list, followed by the
+    * error's exception field, followed by the error's exception cause chain.
+    */
+  def wrapHdfsErr[A](msg: String)(hdfs: Hdfs[A]): Hdfs[A] =
+    EdgeOp.mapResult(wrapErr[A](msg))(hdfs)
 }

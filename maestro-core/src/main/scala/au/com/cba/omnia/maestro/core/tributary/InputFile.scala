@@ -15,12 +15,14 @@
 package au.com.cba.omnia.maestro.core
 package tributary
 
-import scala.util.{Try, Success, Failure => TryFailure}
-
 import java.io.File
 import java.text.SimpleDateFormat
 
 import org.joda.time.DateTime
+
+import scalaz.{-\/, \/-}
+
+import au.com.cba.omnia.omnitool.time.TimeParser
 
 /** ADT representing the different types of input file we can find when loading
   * into HDFS
@@ -52,24 +54,21 @@ object InputFile {
     // TODO is flat file listing correct? we don't do recursive search?
     val fileNameRegex = s"^$fileName[_:-]?$regexTimeStampString.*".r
     sourceDir
-      .listFiles.to[Seq]
+      .listFiles.toList
       .filter(f => fileNameRegex.findFirstIn(f.getName).isDefined)
       .map(getInputFile(_, timeFormat))
   }
 
   /** gets the input file corresponding to a file */
   def getInputFile(file: File, timeFormat: String): InputFile =
-
-    // TODO could use another monadic failure object here, but it's simple enough as is
-
     getTimeStamps(file) match {
-      case Nil              => UnexpectedFile(file, s"could not find timestamp in $file.getName")
-      case _ :: _ :: _      => UnexpectedFile(file, s"found more than one timestamp in $file.getName")
+      case Nil              => UnexpectedFile(file, s"could not find timestamp in ${file.getName}")
+      case _ :: _ :: _      => UnexpectedFile(file, s"found more than one timestamp in ${file.getName}")
       case timeStamp :: Nil =>
 
         parseTimeStamp(timeFormat, timeStamp) match {
-          case TryFailure(exn) => UnexpectedFile(file, s"The file timestamp is not valid in $file.getName ($exn.toString)")
-          case Success(date)   =>
+          case -\/(exn) => UnexpectedFile(file, s"The file timestamp is not valid in ${file.getName} (${exn.toString})")
+          case \/-(date)   =>
 
             if (isControlFile(file))
               ControlFile(file)
@@ -83,12 +82,8 @@ object InputFile {
     regexTimeStampString.r.findAllIn(file.getName).toList
 
   /** extract time from time stamps */
-  def parseTimeStamp(timeFormat: String, timeStamp: String) = {
-    // TODO consider testing JodaTime parsing instead
-    val parser = new SimpleDateFormat(timeFormat)
-    parser.setLenient(false)
-    Try(parser.parse(timeStamp)).map(new DateTime(_))
-  }
+  def parseTimeStamp(timeFormat: String, timeStamp: String) =
+    TimeParser.parse(timeStamp, timeFormat)
 
   /** check if file matches any of the control file patterns */
   def isControlFile(file: File) =

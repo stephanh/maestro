@@ -98,10 +98,8 @@ object Tributary {
   def flowImpl(srcName: String, fileName: String, timeFormat: String,
     locSourceDir: String, archiveDir: String, hdfsSourceDir: String, destSubDir: String) {
 
-    // TODO srcName is only used for logging. Get rid of it?
-
     logger.info("Start of Tributary Flow")
-    logger.info(s"srcName       = $srcName")
+    logger.info(s"srcName       = $srcName")     // srcName is only used for logging.
     logger.info(s"fileName      = $fileName")
     logger.info(s"timeFormat    = $timeFormat")
     logger.info(s"locSourceDir  = $locSourceDir")
@@ -115,10 +113,10 @@ object Tributary {
     if (inputFiles.isEmpty) {
       logger.info("No input files have been found")
     } else {
-      for { file <- inputFiles } {
+      inputFiles.foreach(file => {
         file match {
-          case ControlFile(file)         => logger.info(s"Skipping control file $file.getName")
-          case UnexpectedFile(file, msg) => logger.error(s"error processing $file.getName: $msg")
+          case ControlFile(file)         => logger.info(s"Skipping control file ${file.getName}")
+          case UnexpectedFile(file, msg) => logger.error(s"error processing ${file.getName}: $msg")
 
           case src @ DataFile(_,_)       => {
             val result = GenericPush.processTheFile(src, hdfsSourceDir, archiveDir, destSubDir).safe.run(conf)
@@ -128,15 +126,14 @@ object Tributary {
               case Error(This(msg))      => logger.error(msg)
               case Error(Both(msg, exn)) => logger.error(msg, exn)
 
-              case Ok(Pushed(src,dest,Copied()))        => logger.info(s"copied ${src.file} to $dest")
-              case Ok(Pushed(src,dest,AlreadyExists())) => logger.info(s"skipping ${src.file} as it already exists at $dest")
+              case Ok(Pushed(src, dest, Copied))        => logger.info(s"copied ${src.file} to $dest")
+              case Ok(Pushed(src, dest, AlreadyExists)) => logger.info(s"skipping ${src.file} as it already exists at $dest")
             }
           }
         }
-      }
+      })
     }
 
     logger.info(s"Tributary flow ended for $srcName $fileName $locSourceDir $archiveDir $hdfsSourceDir $destSubDir")
   }
-
 }

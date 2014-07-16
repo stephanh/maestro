@@ -97,10 +97,10 @@ class GenericPushSpec extends Specification {
       val conf = new Configuration
 
       val copyCheck = GenericPush.copyToHdfs(src, Hdfs.path(hdfsDirS)).safe.run(conf)
-      copyCheck must beLike { case Ok(Pushed(_,_,Copied())) => ok }
+      copyCheck must beLike { case Ok(Pushed(_,_,Copied)) => ok }
 
       val duplicateCheck = GenericPush.copyToHdfs(src, Hdfs.path(hdfsDirS)).safe.run(conf)
-      duplicateCheck must beLike { case Ok(Pushed(_,_,AlreadyExists())) => ok }
+      duplicateCheck must beLike { case Ok(Pushed(_,_,AlreadyExists)) => ok }
     }
 
   }
