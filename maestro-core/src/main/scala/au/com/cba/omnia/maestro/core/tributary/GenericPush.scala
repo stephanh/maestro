@@ -48,10 +48,9 @@ object GenericPush {
     *   - create an "ingestion complete" flag on Hdfs
     *   - archive the file
     */
-  def processTheFile(src: DataFile, hdfsLandingDir: String, archiveDir: String,
-    destSubDir: String): Hdfs[Pushed] = {
-    val hdfsDestDir = Hdfs.path(List(hdfsLandingDir, destSubDir, src.fileSubDir).mkString(File.separator))
-    val archiveDestDir = new File(List(archiveDir, destSubDir, src.fileSubDir).mkString(File.separator))
+  def processTheFile(src: DataFile, archiveDir: String, hdfsLandingDir: String): Hdfs[Pushed] = {
+    val hdfsDestDir    = Hdfs.path(List(hdfsLandingDir, src.fileSubDir) mkString File.separator)
+    val archiveDestDir = new File( List(archiveDir,     src.fileSubDir) mkString File.separator)
 
     for {
       pushed <- copyToHdfs(src, hdfsDestDir)

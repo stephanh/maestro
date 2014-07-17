@@ -112,11 +112,10 @@ class GenericPushSpec extends Specification {
       src.file.createNewFile
       val conf = new Configuration
 
-      val processCheck = GenericPush.processTheFile(src, hdfsDirS, archiveDirS, "prefix").safe.run(conf)
+      val processCheck = GenericPush.processTheFile(src, hdfsDirS, archiveDirS).safe.run(conf)
       processCheck must beLike { case Ok(_) => ok }
 
       val destExists = Hdfs.exists(new Path(hdfsDirS
-        + File.separator + "prefix"
         + File.separator + "foo"
         + File.separator + "bar"
         + File.separator + "local20140506.txt")).safe.run(conf)
@@ -128,7 +127,7 @@ class GenericPushSpec extends Specification {
       src.file.createNewFile
       val conf = new Configuration
 
-      val processCheck = GenericPush.processTheFile(src, hdfsDirS, archiveDirS, ".").safe.run(conf)
+      val processCheck = GenericPush.processTheFile(src, hdfsDirS, archiveDirS).safe.run(conf)
       processCheck must beLike { case Ok(_) => ok }
 
       val destExists = Hdfs.exists(new Path(hdfsDirS

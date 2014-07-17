@@ -30,28 +30,13 @@ import au.com.cba.omnia.maestro.core.tributary._
 /** Send files to HDFS */
 trait Tributary {
 
-  /**
-    *  Pushes source files onto HDFS and archives them locally.
-    *
-    *  @param srcName: Source System Name
-    *  @param fileName: File Name
-    *  @param timeFormat: Timestamp format
-    *  @param locSourceDir: Local source landing directory
-    *  @param archiveDir: Local archive directory
-    *  @param hdfsLandingDir: HDFS landing directory, must be subdirectory of HDFS source directory
-    */
-  def flow(srcName: String, fileName: String, timeFormat: String,
-    locSourceDir: String, archiveDir: String, hdfsLandingDir: String) {
+  def flow(domain: String, tableName: String, timeFormat: String,
+    bigDataRoot: String, archiveRoot: String, env: String) = {
+    val locSourceDir   = List(bigDataRoot, "dataFeed", domain)            mkString File.separator
+    val archiveDir     = List(archiveRoot, "dataFeed", domain, tableName) mkString File.separator
+    val hdfsLandingDir = List(env,         "source",   domain, tableName) mkString File.separator
 
-    Tributary.splitHdfsDir(new File(hdfsLandingDir)) match {
-      case Some((hdfsSourceDir, destSubDir)) =>
-        Tributary.flowImpl(srcName, fileName, timeFormat, locSourceDir,
-          archiveDir, hdfsSourceDir.toString, destSubDir)
-
-      case None =>
-        Tributary.logger.error(s"Could not start Tributary flow: could not find HDFS source dir in $hdfsLandingDir")
-    }
-
+    Tributary.flowImpl(domain, tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir)
   }
 
   /**
@@ -62,16 +47,11 @@ trait Tributary {
     *  @param timeFormat: Timestamp format
     *  @param locSourceDir: Local source landing directory
     *  @param archiveDir: Local archive directory
-    *  @param hdfsSourceDir: HDFS source directory
-    *  @param destSubDir: subdirectory of HDFS source and archive file
-    *
+    *  @param hdfsLandingDir: HDFS landing directory
     */
-  def flow(srcName: String, fileName: String, timeFormat: String,
-    locSourceDir: String, archiveDir: String, hdfsSourceDir: String, destSubDir: String) {
-
-    Tributary.flowImpl(srcName, fileName, timeFormat, locSourceDir, archiveDir,
-      hdfsSourceDir, destSubDir)
-  }
+  def customFlow(srcName: String, fileName: String, timeFormat: String,
+    locSourceDir: String, archiveDir: String, hdfsLandingDir: String) =
+    Tributary.flowImpl(srcName, fileName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir)
 }
 
 /**
@@ -85,29 +65,19 @@ object Tributary {
 
   val logger = Logger.getLogger("Tributary")
 
-  /** Split hdfsLandingDir into hdfs source dir and subdirectory within source dir */
-  def splitHdfsDir(hdfsDir: File): Option[(File, String)] =
-    if (hdfsDir.getName == "source")
-      Some((hdfsDir, ""))
-    else
-      Option(hdfsDir.getParentFile)
-        .flatMap(splitHdfsDir(_))
-        .map(pair => (pair._1, pair._2 + File.separator + hdfsDir.getName))
-
   /** Implementation of `flow` methods in `Tributary` trait */
-  def flowImpl(srcName: String, fileName: String, timeFormat: String,
-    locSourceDir: String, archiveDir: String, hdfsSourceDir: String, destSubDir: String) {
+  def flowImpl(domain: String, tableName: String, timeFormat: String,
+    locSourceDir: String, archiveDir: String, hdfsLandingDir: String) {
 
     logger.info("Start of Tributary Flow")
-    logger.info(s"srcName       = $srcName")     // srcName is only used for logging.
-    logger.info(s"fileName      = $fileName")
-    logger.info(s"timeFormat    = $timeFormat")
-    logger.info(s"locSourceDir  = $locSourceDir")
-    logger.info(s"archiveDir    = $archiveDir")
-    logger.info(s"hdfsSourceDir = $hdfsSourceDir")
-    logger.info(s"destSubDir    = $destSubDir")
+    logger.info(s"domain         = $domain") // domain is only used for logging
+    logger.info(s"tableName      = $tableName")
+    logger.info(s"timeFormat     = $timeFormat")
+    logger.info(s"locSourceDir   = $locSourceDir")
+    logger.info(s"archiveDir     = $archiveDir")
+    logger.info(s"hdfsLandingDir = $hdfsLandingDir")
 
-    val inputFiles = InputFile.findFiles(new File(locSourceDir), fileName, timeFormat)
+    val inputFiles = InputFile.findFiles(new File(locSourceDir), tableName, timeFormat)
     val conf = new Configuration
 
     if (inputFiles.isEmpty) {
@@ -119,7 +89,7 @@ object Tributary {
           case UnexpectedFile(file, msg) => logger.error(s"error processing ${file.getName}: $msg")
 
           case src @ DataFile(_,_)       => {
-            val result = GenericPush.processTheFile(src, hdfsSourceDir, archiveDir, destSubDir).safe.run(conf)
+            val result = GenericPush.processTheFile(src, archiveDir, hdfsLandingDir).safe.run(conf)
             result match {
 
               case Error(That(exn))      => logger.error(s"error processing $file", exn)
@@ -134,6 +104,6 @@ object Tributary {
       })
     }
 
-    logger.info(s"Tributary flow ended for $srcName $fileName $locSourceDir $archiveDir $hdfsSourceDir $destSubDir")
+    logger.info(s"Tributary flow ended for $domain $tableName $timeFormat $locSourceDir $archiveDir $hdfsLandingDir")
   }
 }
