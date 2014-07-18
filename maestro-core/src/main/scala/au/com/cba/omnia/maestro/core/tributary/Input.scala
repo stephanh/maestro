@@ -20,27 +20,23 @@ import java.text.SimpleDateFormat
 
 import org.joda.time.DateTime
 
-import scalaz.{-\/, \/-}
+import scalaz._, Scalaz._
 
 import au.com.cba.omnia.omnitool.time.TimeParser
 
-/** ADT representing the different types of input file we can find when loading
-  * into HDFS
-  */
-sealed trait InputFile
+import com.cba.omnia.edge.hdfs.{Hdfs, Result}
+
+/** A file existing in the source directory */
+sealed trait Input
+
+/** A control file, not to be loaded into HDFS */
+case class Control(file: File) extends Input
 
 /** A file to be loaded into HDFS */
-case class DataFile(file: File, fileSubDir: File) extends InputFile
+case class Data(file: File, fileSubDir: File) extends Input
 
-/** A control file */
-case class ControlFile(file: File) extends InputFile
-
-/** A file that unexpectedly can't be processed */
-case class UnexpectedFile(file: File, error: String) extends InputFile
-
-
-/** Factory for `InputFile`s */
-object InputFile {
+/** Factory for `Input`s */
+object Input {
 
   /** Pattern for fetching time from file name */
   val regexTimeStampString =
@@ -50,58 +46,54 @@ object InputFile {
   val controlFilePatterns = List("./S_*", "_CTR.*", "_CTR", "\\.CTR", "\\.CTL", "\\.ctl")
 
   /** Find files from a directory matching a given filename prefix with a timestamp suffix. */
-  def findFiles(sourceDir: File, fileName: String, timeFormat: String): Seq[InputFile] = {
-    // TODO is flat file listing correct? we don't do recursive search?
+  def findFiles(sourceDir: File, fileName: String, timeFormat: String): Result[List[Input]] = {
     val fileNameRegex = s"^$fileName[_:-]?$regexTimeStampString.*".r
     sourceDir
       .listFiles.toList
       .filter(f => fileNameRegex.findFirstIn(f.getName).isDefined)
-      .map(getInputFile(_, timeFormat))
+      .traverse(getInput(_, timeFormat))
   }
 
   /** gets the input file corresponding to a file */
-  def getInputFile(file: File, timeFormat: String): InputFile =
-    getTimeStamps(file) match {
-      case Nil              => UnexpectedFile(file, s"could not find timestamp in ${file.getName}")
-      case _ :: _ :: _      => UnexpectedFile(file, s"found more than one timestamp in ${file.getName}")
-      case timeStamp :: Nil =>
+  def getInput(file: File, timeFormat: String): Result[Input] =
+    if (isControl(file))
+      Result.ok(Control(file))
+    else
+      for {
+        timeStamp <- getTimeStamp(file)
+        date <- parseTimeStamp(timeFormat, timeStamp)
+      } yield Data(file, pathToFile(date, timeFormat))
 
-        parseTimeStamp(timeFormat, timeStamp) match {
-          case -\/(exn) => UnexpectedFile(file, s"The file timestamp is not valid in ${file.getName} (${exn.toString})")
-          case \/-(date)   =>
-
-            if (isControlFile(file))
-              ControlFile(file)
-            else
-              DataFile(file, pathToFile(date, timeFormat))
-        }
+  /** get the timestamp from the file name */
+  def getTimeStamp(file: File) =
+    regexTimeStampString.r.findAllIn(file.getName).toList match {
+      case Nil              => Result.fail(s"could not find timestamp in ${file.getName}")
+      case _ :: _ :: _      => Result.fail(s"found more than one timestamp in ${file.getName}")
+      case timeStamp :: Nil => Result.ok(timeStamp)
     }
 
-  /** get all timestamps from file name */
-  def getTimeStamps(file: File) =
-    regexTimeStampString.r.findAllIn(file.getName).toList
-
-  /** extract time from time stamps */
+  /** parsing `Result` */
   def parseTimeStamp(timeFormat: String, timeStamp: String) =
-    TimeParser.parse(timeStamp, timeFormat)
+    TimeParser.parse(timeStamp, timeFormat).fold(Result.fail(_), Result.ok(_))
 
   /** check if file matches any of the control file patterns */
-  def isControlFile(file: File) =
+  def isControl(file: File) =
     controlFilePatterns.exists(_.r.findFirstIn(file.getName).isDefined)
 
   /** get the relative path to this file in hdfs and the archive dir */
   def pathToFile(dateTime: DateTime, timeFormat: String): File = {
     val mandatoryDirs = List(
       f"${dateTime.getYear}%04d",
-      dateTime.getMonthOfYear.toString)
+      dateTime.getMonthOfYear.toString
+    )
     val optionalDirs = List(
       dateTime.getDayOfMonth.toString,
       dateTime.getHourOfDay.toString,
-      dateTime.getMinuteOfHour.toString)
+      dateTime.getMinuteOfHour.toString
+    )
     val numOptional = List("dd", "HH", "mm").takeWhile(timeFormat.contains(_)).length
 
     val actualDirs = mandatoryDirs ++ optionalDirs.take(numOptional)
-
-    new File(actualDirs.mkString(File.pathSeparator))
+    new File(actualDirs mkString File.separator)
   }
 }

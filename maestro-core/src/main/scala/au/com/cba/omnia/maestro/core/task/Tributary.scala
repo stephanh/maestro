@@ -21,9 +21,9 @@ import org.apache.hadoop.conf.Configuration
 
 import org.apache.log4j.Logger
 
-import scalaz.\&/.{This, That, Both}
+import scalaz._, Scalaz._
 
-import com.cba.omnia.edge.hdfs.{Error, Ok}
+import com.cba.omnia.edge.hdfs.{Error, Hdfs, Ok, Result}
 
 import au.com.cba.omnia.maestro.core.tributary._
 
@@ -31,27 +31,62 @@ import au.com.cba.omnia.maestro.core.tributary._
 trait Tributary {
 
   def flow(domain: String, tableName: String, timeFormat: String,
-    bigDataRoot: String, archiveRoot: String, env: String) = {
+    bigDataRoot: String, archiveRoot: String, env: String): Result[Unit] = {
+    val logger = Logger.getLogger("Tributary")
+
+    logger.info("Start of Tributary flow")
+    logger.info(s"domain      = $domain") // domain is only used for logging
+    logger.info(s"tableName   = $tableName")
+    logger.info(s"timeFormat  = $timeFormat")
+    logger.info(s"bigDataRoot = $bigDataRoot")
+    logger.info(s"archiveRoot = $archiveRoot")
+    logger.info(s"env         = $env")
+
     val locSourceDir   = List(bigDataRoot, "dataFeed", domain)            mkString File.separator
     val archiveDir     = List(archiveRoot, "dataFeed", domain, tableName) mkString File.separator
     val hdfsLandingDir = List(env,         "source",   domain, tableName) mkString File.separator
 
-    Tributary.flowImpl(domain, tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir)
+    val conf = new Configuration
+    val result: Result[Unit] = Tributary.flowImpl(tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir).safe.run(conf)
+
+    // TODO log depends on what result is!
+    logger.info(s"Tributary flow ended for $domain $tableName $timeFormat $bigDataRoot $archiveRoot $env")
+
+    result
   }
 
   /**
-    *  Pushes source files onto HDFS and archives them locally.
+    * Pushes source files onto HDFS and archives them locally.
     *
-    *  @param srcName: Source System Name
-    *  @param fileName: File Name
-    *  @param timeFormat: Timestamp format
-    *  @param locSourceDir: Local source landing directory
-    *  @param archiveDir: Local archive directory
-    *  @param hdfsLandingDir: HDFS landing directory
+    * TODO more documentation!!
+    *
+    * @param domain: Domain (source system name)
+    * @param tableName: Table name (file prefix)
+    * @param timeFormat: Timestamp format
+    * @param locSourceDir: Local source landing directory
+    * @param archiveDir: Local archive directory
+    * @param hdfsLandingDir: HDFS landing directory
     */
-  def customFlow(srcName: String, fileName: String, timeFormat: String,
-    locSourceDir: String, archiveDir: String, hdfsLandingDir: String) =
-    Tributary.flowImpl(srcName, fileName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir)
+  def customFlow(domain: String, tableName: String, timeFormat: String,
+    locSourceDir: String, archiveDir: String, hdfsLandingDir: String): Result[Unit] = {
+    val logger = Logger.getLogger("Tributary")
+
+    logger.info("Start of Tributary custom flow")
+    logger.info(s"domain         = $domain") // domain is only used for logging
+    logger.info(s"tableName      = $tableName")
+    logger.info(s"timeFormat     = $timeFormat")
+    logger.info(s"locSourceDir   = $locSourceDir")
+    logger.info(s"archiveDir     = $archiveDir")
+    logger.info(s"hdfsLandingDir = $hdfsLandingDir")
+
+    val conf = new Configuration
+    val result = Tributary.flowImpl(tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir).safe.run(conf)
+
+    // TODO log depends on what result is!
+    logger.info(s"Tributary custom flow ended for $domain $tableName $timeFormat $locSourceDir $archiveDir $hdfsLandingDir")
+
+    result
+  }
 }
 
 /**
@@ -62,48 +97,20 @@ trait Tributary {
   * API instead, unless you know what you are doing.
   */
 object Tributary {
-
   val logger = Logger.getLogger("Tributary")
 
   /** Implementation of `flow` methods in `Tributary` trait */
-  def flowImpl(domain: String, tableName: String, timeFormat: String,
-    locSourceDir: String, archiveDir: String, hdfsLandingDir: String) {
+  def flowImpl(tableName: String, timeFormat: String,
+    locSourceDir: String, archiveDir: String, hdfsLandingDir: String): Hdfs[Unit] =
+    for {
+      inputFiles <- Hdfs.result(Input.findFiles(new File(locSourceDir), tableName, timeFormat))
 
-    logger.info("Start of Tributary Flow")
-    logger.info(s"domain         = $domain") // domain is only used for logging
-    logger.info(s"tableName      = $tableName")
-    logger.info(s"timeFormat     = $timeFormat")
-    logger.info(s"locSourceDir   = $locSourceDir")
-    logger.info(s"archiveDir     = $archiveDir")
-    logger.info(s"hdfsLandingDir = $hdfsLandingDir")
-
-    val inputFiles = InputFile.findFiles(new File(locSourceDir), tableName, timeFormat)
-    val conf = new Configuration
-
-    if (inputFiles.isEmpty) {
-      logger.info("No input files have been found")
-    } else {
-      inputFiles.foreach(file => {
-        file match {
-          case ControlFile(file)         => logger.info(s"Skipping control file ${file.getName}")
-          case UnexpectedFile(file, msg) => logger.error(s"error processing ${file.getName}: $msg")
-
-          case src @ DataFile(_,_)       => {
-            val result = GenericPush.processTheFile(src, archiveDir, hdfsLandingDir).safe.run(conf)
-            result match {
-
-              case Error(That(exn))      => logger.error(s"error processing $file", exn)
-              case Error(This(msg))      => logger.error(msg)
-              case Error(Both(msg, exn)) => logger.error(msg, exn)
-
-              case Ok(Pushed(src, dest, Copied))        => logger.info(s"copied ${src.file} to $dest")
-              case Ok(Pushed(src, dest, AlreadyExists)) => logger.info(s"skipping ${src.file} as it already exists at $dest")
-            }
-          }
-        }
+      _ <- inputFiles.traverse_(_ match {
+        case Control(file)   => Hdfs.value(logger.info(s"skipping control file ${file.getName}"))
+        case src @ Data(_,_) => for {
+          copied <- Push.push(src, archiveDir, hdfsLandingDir)
+          _      =  logger.info(s"copied ${copied.source.getName} to ${copied.dest}")
+        } yield ()
       })
-    }
-
-    logger.info(s"Tributary flow ended for $domain $tableName $timeFormat $locSourceDir $archiveDir $hdfsLandingDir")
-  }
+    } yield ()
 }
