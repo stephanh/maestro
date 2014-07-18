@@ -13,7 +13,7 @@
 //   limitations under the License.
 
 package au.com.cba.omnia.maestro.core
-package tributary
+package upload
 
 import scala.util.Random
 
@@ -23,7 +23,7 @@ import java.io.FileNotFoundException
 import org.specs2.mutable.After
 import org.specs2.specification.Scope
 
-/** Trait that provides clean test directories for Tributary tests */
+/** Trait that provides clean test directories for Upload tests */
 trait IsolatedTest extends Scope with After {
 
   // machinery to find a suitable isolated root dir for temporary test folders

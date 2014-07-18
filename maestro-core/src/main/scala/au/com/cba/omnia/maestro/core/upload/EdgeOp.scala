@@ -13,7 +13,7 @@
 //   limitations under the License.
 
 package au.com.cba.omnia.maestro.core
-package tributary
+package upload
 
 import scalaz.\&/.{This, That, Both}
 

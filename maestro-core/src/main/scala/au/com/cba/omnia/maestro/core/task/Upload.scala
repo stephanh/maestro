@@ -25,16 +25,16 @@ import scalaz._, Scalaz._
 
 import com.cba.omnia.edge.hdfs.{Error, Hdfs, Ok, Result}
 
-import au.com.cba.omnia.maestro.core.tributary._
+import au.com.cba.omnia.maestro.core.upload._
 
 /** Send files to HDFS */
-trait Tributary {
+trait Upload {
 
-  def flow(domain: String, tableName: String, timeFormat: String,
+  def upload(domain: String, tableName: String, timeFormat: String,
     bigDataRoot: String, archiveRoot: String, env: String): Result[Unit] = {
-    val logger = Logger.getLogger("Tributary")
+    val logger = Logger.getLogger("Upload")
 
-    logger.info("Start of Tributary flow")
+    logger.info("Start of upload")
     logger.info(s"domain      = $domain") // domain is only used for logging
     logger.info(s"tableName   = $tableName")
     logger.info(s"timeFormat  = $timeFormat")
@@ -47,10 +47,10 @@ trait Tributary {
     val hdfsLandingDir = List(env,         "source",   domain, tableName) mkString File.separator
 
     val conf = new Configuration
-    val result: Result[Unit] = Tributary.flowImpl(tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir).safe.run(conf)
+    val result: Result[Unit] = Upload.uploadImpl(tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir).safe.run(conf)
 
     // TODO log depends on what result is!
-    logger.info(s"Tributary flow ended for $domain $tableName $timeFormat $bigDataRoot $archiveRoot $env")
+    logger.info(s"Upload ended for $domain $tableName $timeFormat $bigDataRoot $archiveRoot $env")
 
     result
   }
@@ -67,11 +67,11 @@ trait Tributary {
     * @param archiveDir: Local archive directory
     * @param hdfsLandingDir: HDFS landing directory
     */
-  def customFlow(domain: String, tableName: String, timeFormat: String,
+  def customUpload(domain: String, tableName: String, timeFormat: String,
     locSourceDir: String, archiveDir: String, hdfsLandingDir: String): Result[Unit] = {
-    val logger = Logger.getLogger("Tributary")
+    val logger = Logger.getLogger("Upload")
 
-    logger.info("Start of Tributary custom flow")
+    logger.info("Start of custom upload")
     logger.info(s"domain         = $domain") // domain is only used for logging
     logger.info(s"tableName      = $tableName")
     logger.info(s"timeFormat     = $timeFormat")
@@ -80,37 +80,37 @@ trait Tributary {
     logger.info(s"hdfsLandingDir = $hdfsLandingDir")
 
     val conf = new Configuration
-    val result = Tributary.flowImpl(tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir).safe.run(conf)
+    val result = Upload.uploadImpl(tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir).safe.run(conf)
 
     // TODO log depends on what result is!
-    logger.info(s"Tributary custom flow ended for $domain $tableName $timeFormat $locSourceDir $archiveDir $hdfsLandingDir")
+    logger.info(s"Custom upload ended for $domain $tableName $timeFormat $locSourceDir $archiveDir $hdfsLandingDir")
 
     result
   }
 }
 
 /**
-  * Contains implementation for `flow` methods in `Tributary` trait.
+  * Contains implementation for `upload` methods in `Upload` trait.
   *
   * WARNING: The methods on this object are not considered part of the public
   * maestro API, and may change without warning. Use the methods in the maestro
   * API instead, unless you know what you are doing.
   */
-object Tributary {
-  val logger = Logger.getLogger("Tributary")
+object Upload {
+  val logger = Logger.getLogger("Upload")
 
-  /** Implementation of `flow` methods in `Tributary` trait */
-  def flowImpl(tableName: String, timeFormat: String,
+  /** Implementation of `upload` methods in `Upload` trait */
+  def uploadImpl(tableName: String, timeFormat: String,
     locSourceDir: String, archiveDir: String, hdfsLandingDir: String): Hdfs[Unit] =
     for {
       inputFiles <- Hdfs.result(Input.findFiles(new File(locSourceDir), tableName, timeFormat))
 
-      _ <- inputFiles.traverse_(_ match {
+      _ <- inputFiles traverse_ {
         case Control(file)   => Hdfs.value(logger.info(s"skipping control file ${file.getName}"))
         case src @ Data(_,_) => for {
           copied <- Push.push(src, archiveDir, hdfsLandingDir)
           _      =  logger.info(s"copied ${copied.source.getName} to ${copied.dest}")
         } yield ()
-      })
+      }
     } yield ()
 }
