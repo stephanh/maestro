@@ -63,7 +63,7 @@ class SplitCustomerCascade(args: Args) extends Maestro[Customer](args) {
   val errors        = s"${env}/errors/${domain}"
   val dateView      = s"${env}/view/warehouse/${domain}/by-date"
   val catView       = s"${env}/view/warehouse/${domain}/by-cat"
-  
+
   val cleaners      = Clean.all(
     Clean.trim,
     Clean.removeNonPrintables
@@ -75,7 +75,7 @@ class SplitCustomerCascade(args: Args) extends Maestro[Customer](args) {
   )
 
   val filter        = RowFilter.keep
-  
+
   load[Customer]("|", inputs, errors, Maestro.now(), cleaners, validators, filter)
     .map(split[Customer,(Customer, Customer, Customer)]) >>*
   (
@@ -84,4 +84,3 @@ class SplitCustomerCascade(args: Args) extends Maestro[Customer](args) {
     view( Partition.byDate(Fields.EffectiveDate), dateView)
   )
 }
-

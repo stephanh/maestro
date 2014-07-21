@@ -33,7 +33,7 @@ trait Upload {
   /**
     * Pushes source files onto HDFS and archives them locally.
     *
-    * TODO see example in maestro-example
+    * See the example at `au.com.cba.omnia.maestro.example.CustomerUploadExample`.
     *
     * In order to run map-reduce jobs, we first need to get our data onto HDFS.
     * `upload` copies data files from the local machine onto HDFS.
@@ -50,14 +50,14 @@ trait Upload {
     * file is archived as:
     * `$archiveRoot/dataFeed/$domain/$tableName/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>.gz`.
     *
-    * Some files placed on the local machine are _control files_. These files
+    * Some files placed on the local machine are control files. These files
     * are not intended for HDFS and are ignored by `upload`. `upload` will log
     * a message whenever it ignores a control file.
     *
     * When an error occurs, `upload` stops copying files immediately. Once the
     * cause of the error has been addressed, `upload` can be run again to copy
-    * any remaining files to HDFS. `upload` will refuse to copy a file ifthat
-    * file or that file's _control flags_ are already present in HDFS. If you
+    * any remaining files to HDFS. `upload` will refuse to copy a file if that
+    * file or it's control flags are already present in HDFS. If you
     * need to overwrite a file that already exists in HDFS, you will need to
     * delete the file and it's control flags before `upload` will replace it.
     *
@@ -67,6 +67,7 @@ trait Upload {
     * @param bigDataRoot: Root directory of incoming data files
     * @param archiveRoot: Root directory of the local archive
     * @param env: HDFS environment
+    * @return Any error occuring when uploading files
     */
   def upload(domain: String, tableName: String, timeFormat: String,
     bigDataRoot: String, archiveRoot: String, env: String): Result[Unit] = {
@@ -101,13 +102,13 @@ trait Upload {
   /**
     * Pushes source files onto HDFS and archives them locally.
     *
-    * As per `upload`, except that the user more control where to find data
+    * As per [[upload]], except the user has more control where to find data
     * files, where to copy them, and where to archive them.
     *
     * Data files are found in the local folder `$locSourceDir`. They are copied
     * to `$hdfsLandingDir/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>`,
     * and archived at `$archiveDir/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>.gz`.
-    * In all other respects `customUpload` behaves the same as `upload`.
+    * In all other respects `customUpload` behaves the same as [[upload]].
     *
     * @param domain: Domain (source system name)
     * @param tableName: Table name (file prefix)
@@ -115,6 +116,7 @@ trait Upload {
     * @param locSourceDir: Local source landing directory
     * @param archiveDir: Local archive directory
     * @param hdfsLandingDir: HDFS landing directory
+    * @return Any error occuring when uploading files
     */
   def customUpload(domain: String, tableName: String, timeFormat: String,
     locSourceDir: String, archiveDir: String, hdfsLandingDir: String): Result[Unit] = {
@@ -144,7 +146,7 @@ trait Upload {
 }
 
 /**
-  * Contains implementation for `upload` methods in `Upload` trait.
+  * Contains implementation for `upload` methods in [[Upload]] trait.
   *
   * WARNING: The methods on this object are not considered part of the public
   * maestro API, and may change without warning. Use the methods in the maestro
@@ -153,7 +155,7 @@ trait Upload {
 object Upload {
   val logger = Logger.getLogger("Upload")
 
-  /** Implementation of `upload` methods in `Upload` trait */
+  /** Implementation of `upload methods in [[Upload]] trait */
   def uploadImpl(tableName: String, timeFormat: String,
     locSourceDir: String, archiveDir: String, hdfsLandingDir: String): Hdfs[Unit] =
     for {
