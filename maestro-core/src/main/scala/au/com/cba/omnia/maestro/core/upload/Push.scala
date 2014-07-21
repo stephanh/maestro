@@ -87,14 +87,13 @@ object Push {
     * Overwrites any existing file in the archive directory.
     */
   def archiveFile(srcFile: File, destDir: File): Result[Unit] = {
-      val destFile   = new File(destDir, srcFile.getName)
+      val destFile   = new File(destDir, srcFile.getName + ".gz")
       val fileExists = destFile.isFile
       val dirExists  = destDir.isDirectory
 
       for {
         _ <- EdgeOp.failIf(!dirExists && !destDir.mkdirs)("could not create archive directory for ${srcFile.getName}")
-        _ <- EdgeOp.failIf(!fileExists && !srcFile.renameTo(destFile))("failed to move ${srcFile.getName} to archive")
-        _ <- EdgeOp.failIf(fileExists && !(destFile.delete && srcFile.renameTo(destFile)))("failed to overwrite existing archived version of ${srcFile.getName}")
+        _ <- Result.safe(FileOp.overwriteCompressed(srcFile, destFile))
       } yield ()
     }
 }

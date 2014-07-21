@@ -35,7 +35,7 @@ class PushSpec extends Specification {
       val archiveCheck = Push.archiveFile(local, new File(archiveDirS))
       archiveCheck mustEqual Ok(())
 
-      val destFile = new File(archiveDirS, "local.txt")
+      val destFile = new File(archiveDirS, "local.txt.gz")
       destFile.isFile must beTrue
     }
 
@@ -47,7 +47,7 @@ class PushSpec extends Specification {
       val archiveCheck = Push.archiveFile(local, destDir)
       archiveCheck mustEqual Ok(())
 
-      val destFile = new File(destDir, "local.txt")
+      val destFile = new File(destDir, "local.txt.gz")
       destFile.isFile must beTrue
     }
 
@@ -55,7 +55,7 @@ class PushSpec extends Specification {
       val local = new File(testDir, "local.txt")
       local.createNewFile
 
-      val destFile = new File(archiveDirS, "local.txt")
+      val destFile = new File(archiveDirS, "local.txt.gz")
       destFile.createNewFile
       destFile.isFile must beTrue
 
