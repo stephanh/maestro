@@ -38,17 +38,17 @@ trait Upload {
     * In order to run map-reduce jobs, we first need to get our data onto HDFS.
     * `upload` copies data files from the local machine onto HDFS.
     * `upload` expects data files intended for HDFS to be placed periodically in
-    * the local folder `$bigDataRoot/dataFeed/$domain`. Different source systems
-    * will use different values for `$domain`. Data files will look like
-    * `$tableName<separator>$timeFormat.<extension>`. `$tableName` and
-    * `$timeFormat` will vary for each source system.
+    * the local folder `\$bigDataRoot/dataFeed/\$domain`. Different source systems
+    * will use different values for `\$domain`. Data files will look like
+    * `\$tableName<separator>\$timeFormat.<extension>`. `\$tableName` and
+    * `\$timeFormat` will vary for each source system.
     *
     * Each data file will be copied onto HDFS as the following file:
-    * `$env/source/$domain/$tableName/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>`.
+    * `\$env/source/\$domain/\$tableName/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>`.
     *
     * Data files are also gzipped and archived on the local machine. Each data
     * file is archived as:
-    * `$archiveRoot/dataFeed/$domain/$tableName/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>.gz`.
+    * `\$archiveRoot/dataFeed/\$domain/\$tableName/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>.gz`.
     *
     * Some files placed on the local machine are control files. These files
     * are not intended for HDFS and are ignored by `upload`. `upload` will log
@@ -105,9 +105,9 @@ trait Upload {
     * As per [[upload]], except the user has more control where to find data
     * files, where to copy them, and where to archive them.
     *
-    * Data files are found in the local folder `$locSourceDir`. They are copied
-    * to `$hdfsLandingDir/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>`,
-    * and archived at `$archiveDir/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>.gz`.
+    * Data files are found in the local folder `\$locSourceDir`. They are copied
+    * to `\$hdfsLandingDir/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>`,
+    * and archived at `\$archiveDir/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>.gz`.
     * In all other respects `customUpload` behaves the same as [[upload]].
     *
     * @param domain: Domain (source system name)
