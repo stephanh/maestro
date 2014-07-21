@@ -32,7 +32,7 @@ import scalaz.\/
   */
 object FileOp {
   /**
-    * Moves file from source to destination. Destination is gzipped.
+    * Moves file from source to destination.
     *
     * If another file already exists at destination, this method overwrites it.
     *
