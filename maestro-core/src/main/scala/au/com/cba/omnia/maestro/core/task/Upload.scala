@@ -27,17 +27,27 @@ import com.cba.omnia.edge.hdfs.{Error, Hdfs, Ok, Result}
 
 import au.com.cba.omnia.maestro.core.upload._
 
-/** Send files to HDFS */
+/**
+  * Push source files to HDFS using [[upload]] and archive them.
+  *
+  * See the example at `au.com.cba.omnia.maestro.example.CustomerUploadExample`.
+  *
+  * In order to run map-reduce jobs, we first need to get our data onto HDFS.
+  * [[upload]] copies data files from the local machine onto HDFS and archives
+  * the files.
+  *
+  * For a given `domain` and `tableName`, [[upload]] copies data files from
+  * the standard location: `\$bigDataRoot/dataFeed/\$domain`, to the standard
+  * HDFS location: `\$env/source/\$domain/\$tableName/<year>/<month>/<optional>/<datetime>/<directories>`.
+  *
+  * Only use [[customUpload]] if we are required to use non-standard locations.
+  */
 trait Upload {
 
   /**
     * Pushes source files onto HDFS and archives them locally.
     *
-    * See the example at `au.com.cba.omnia.maestro.example.CustomerUploadExample`.
-    *
-    * In order to run map-reduce jobs, we first need to get our data onto HDFS.
-    * `upload` copies data files from the local machine onto HDFS.
-    * `upload` expects data files intended for HDFS to be placed periodically in
+    * `upload` expects data files intended for HDFS to be placed in
     * the local folder `\$bigDataRoot/dataFeed/\$domain`. Different source systems
     * will use different values for `\$domain`. Data files will look like
     * `\$tableName<separator>\$timeFormat.<extension>`. `\$tableName` and
@@ -100,7 +110,7 @@ trait Upload {
   }
 
   /**
-    * Pushes source files onto HDFS and archives them locally.
+    * Pushes source files onto HDFS and archives them locally, using non-standard file locations.
     *
     * As per [[upload]], except the user has more control where to find data
     * files, where to copy them, and where to archive them.
