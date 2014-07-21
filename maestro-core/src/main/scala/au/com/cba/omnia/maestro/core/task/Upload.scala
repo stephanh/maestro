@@ -21,7 +21,7 @@ import org.apache.hadoop.conf.Configuration
 
 import org.apache.log4j.Logger
 
-import scalaz._, Scalaz._
+import scalaz._, Scalaz._, scalaz.\&/.{This, That, Both}
 
 import com.cba.omnia.edge.hdfs.{Error, Hdfs, Ok, Result}
 
@@ -87,8 +87,13 @@ trait Upload {
     val conf = new Configuration
     val result: Result[Unit] = Upload.uploadImpl(tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir).safe.run(conf)
 
-    // TODO log depends on what result is!
-    logger.info(s"Upload ended for $domain $tableName $timeFormat $bigDataRoot $archiveRoot $env")
+    val args = s"$domain $tableName"
+    result match {
+      case Ok(())                => logger.info(s"Upload ended for $args")
+      case Error(This(msg))      => logger.error(s"Upload failed for $args: $msg")
+      case Error(That(exn))      => logger.error(s"Upload failed for $args", exn)
+      case Error(Both(msg, exn)) => logger.error(s"Upload failed for $args: $msg", exn)
+    }
 
     result
   }
@@ -126,8 +131,13 @@ trait Upload {
     val conf = new Configuration
     val result = Upload.uploadImpl(tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir).safe.run(conf)
 
-    // TODO log depends on what result is!
-    logger.info(s"Custom upload ended for $domain $tableName $timeFormat $locSourceDir $archiveDir $hdfsLandingDir")
+    val args = s"$domain $tableName"
+    result match {
+      case Ok(())                => logger.info(s"Custom upload ended for $args")
+      case Error(This(msg))      => logger.error(s"Custom upload failed for $args: $msg")
+      case Error(That(exn))      => logger.error(s"Custom upload failed for $args", exn)
+      case Error(Both(msg, exn)) => logger.error(s"Custom upload failed for $args: $msg", exn)
+    }
 
     result
   }
