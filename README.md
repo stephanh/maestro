@@ -21,10 +21,11 @@ with 100s of columns.
 
 [Scaladoc](https://commbank.github.io/maestro/latest/api/index.html)
 
-Usage
------
+Documentation
+-------------
 
-See https://commbank.github.io/maestro/index.html
+Github Pages: https://commbank.github.io/maestro/index.html
+Extended documentation: https://github.com/CommBank/maestro/tree/master/doc
 
 starting point
 --------------
