@@ -74,6 +74,7 @@ trait Upload {
     * need to overwrite a file that already exists in HDFS, you will need to
     * delete the file and it's control flags before `upload` will replace it.
     *
+    * @param conf: Hadoop configuration
     * @param domain: Domain (source system name)
     * @param tableName: Table name (file prefix)
     * @param timeFormat: Timestamp format
@@ -82,7 +83,7 @@ trait Upload {
     * @param hdfsRoot: Root directory of HDFS
     * @return Any error occuring when uploading files
     */
-  def upload(domain: String, tableName: String, timeFormat: String,
+  def upload(conf: Configuration, domain: String, tableName: String, timeFormat: String,
     sourceRoot: String, archiveRoot: String, hdfsRoot: String): Result[Unit] = {
     val logger = Logger.getLogger("Upload")
 
@@ -98,7 +99,6 @@ trait Upload {
     val archiveDir     = List(archiveRoot, "dataFeed", domain, tableName) mkString File.separator
     val hdfsLandingDir = List(hdfsRoot,    "source",   domain, tableName) mkString File.separator
 
-    val conf = new Configuration
     val result: Result[Unit] = Upload.uploadImpl(tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir).safe.run(conf)
 
     val args = s"$domain $tableName"
@@ -125,6 +125,7 @@ trait Upload {
     *
     * In all other respects `customUpload` behaves the same as [[upload]].
     *
+    * @param conf: Hadoop configuration
     * @param tableName: Table name (file prefix)
     * @param timeFormat: Timestamp format
     * @param locSourceDir: Local source landing directory
@@ -132,7 +133,7 @@ trait Upload {
     * @param hdfsLandingDir: HDFS landing directory
     * @return Any error occuring when uploading files
     */
-  def customUpload(tableName: String, timeFormat: String,
+  def customUpload(conf: Configuration, tableName: String, timeFormat: String,
     locSourceDir: String, archiveDir: String, hdfsLandingDir: String): Result[Unit] = {
     val logger = Logger.getLogger("Upload")
 
@@ -143,7 +144,6 @@ trait Upload {
     logger.info(s"archiveDir     = $archiveDir")
     logger.info(s"hdfsLandingDir = $hdfsLandingDir")
 
-    val conf = new Configuration
     val result = Upload.uploadImpl(tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir).safe.run(conf)
 
     result match {

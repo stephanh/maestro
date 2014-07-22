@@ -18,6 +18,8 @@ import com.twitter.scalding.Args
 
 import scalaz._, Scalaz._
 
+import org.apache.hadoop.conf.Configuration
+
 import au.com.cba.omnia.maestro.api.Maestro
 import au.com.cba.omnia.maestro.example.thrift.Customer
 
@@ -27,11 +29,12 @@ class CustomerUploadExample(args: Args) extends Maestro[Customer](args) {
   val hdfsRoot    = args("hdfsRoot")
   val sourceRoot  = args("sourceRoot")
   val archiveRoot = args("archivedir")
+  val conf        = new Configuration
   val domain      = "customer"
   val timeFormat  = "yyyyMMddHHmm"
 
-  val byDateResult = Maestro.upload(domain, "by_date", timeFormat, sourceRoot, archiveRoot, hdfsRoot)
-  val byIdResult   = Maestro.upload(domain, "by_id", timeFormat, sourceRoot, archiveRoot, hdfsRoot)
+  val byDateResult = Maestro.upload(conf, domain, "by_date", timeFormat, sourceRoot, archiveRoot, hdfsRoot)
+  val byIdResult   = Maestro.upload(conf, domain, "by_id", timeFormat, sourceRoot, archiveRoot, hdfsRoot)
 
   List(byDateResult, byIdResult).sequence_ match {
     case Error(_) => {
