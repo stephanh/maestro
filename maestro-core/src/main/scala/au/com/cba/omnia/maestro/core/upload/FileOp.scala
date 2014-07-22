@@ -79,10 +79,16 @@ object FileOp {
   def overwriteCompressed(source: File, dest: File): Unit = {
     val temp = File.createTempFile("moved", "gz")
 
+    // there must be a more convienient canonical way of doing this in scala ...
     try {
       val writer = new GZIPOutputStream(new FileOutputStream(temp))
-      Files.copy(source, writer)
-      writer.flush
+      try {
+        Files.copy(source, writer)
+        writer.flush
+      }
+      finally {
+        writer.close
+      }
       overwrite(temp, dest)
     }
     finally {
