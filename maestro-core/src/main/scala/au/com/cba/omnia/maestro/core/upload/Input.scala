@@ -82,14 +82,15 @@ object Input {
 
   /** get the relative path to this file in hdfs and the archive dir */
   def pathToFile(dateTime: DateTime, timeFormat: String): File = {
+    // zero padding so that alphabetic order matches numeric order
     val mandatoryDirs = List(
       f"${dateTime.getYear}%04d",
-      dateTime.getMonthOfYear.toString
+      f"${dateTime.getMonthOfYear}%02d"
     )
     val optionalDirs = List(
-      dateTime.getDayOfMonth.toString,
-      dateTime.getHourOfDay.toString,
-      dateTime.getMinuteOfHour.toString
+      f"${dateTime.getDayOfMonth}%02d",
+      f"${dateTime.getHourOfDay}%02d",
+      f"${dateTime.getMinuteOfHour}%02d"
     )
     val numOptional = List("dd", "HH", "mm").takeWhile(timeFormat.contains(_)).length
 

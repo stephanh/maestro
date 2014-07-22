@@ -154,7 +154,7 @@ control files
   def rejectLong = isolatedTest((dirs: IsolatedDirs) => {
     val f1 = new File(dirs.testDir, "local20140506.txt")
     val f2 = new File(dirs.testDir, "localname20140506.txt")
-    val data1 = Data(f1, new File(List("2014", "6", "5") mkString File.separator))
+    val data1 = Data(f1, new File(List("2014", "06", "05") mkString File.separator))
     f1.createNewFile
     f2.createNewFile
 
