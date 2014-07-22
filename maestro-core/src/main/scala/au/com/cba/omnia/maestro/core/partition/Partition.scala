@@ -63,6 +63,15 @@ object Partition {
     }, "%s/%s/%s/%s")
 
   /**
+   * Partitions by year, month. Expects to the specified field to have data in the
+   * format `yyyy-mm-dd-hh`.
+   */
+  def byMonth[A](date: Field[A, String]): Partition[A, (String, String)] =
+    Partition(List("year", "month", "day", "hour"), v => date.get(v).split("-").toList match {
+      case List(y, m, d, h) => (y, m)
+    }, "%s/%s")
+
+  /**
     * Prepends `partition_` to column names to avoid clashes between core columns and members of the
     * thrift struct.
     */
@@ -111,6 +120,15 @@ object HivePartition {
     Partition(List("year", "month", "day", "hour"), v => date.get(v).split("-").toList match {
       case List(y, m, d, h) => (y, m, d, h)
     }, "year=%s/month=%s/day=%s/hour=%s")
+
+  /**
+   * Hive style partition by year, month. Expects to the specified field to have data in
+   * the format `yyyy-mm-dd-hh`.
+   */
+  def byHour[A](date: Field[A, String]): Partition[A, (String, String)] =
+    Partition(List("year", "month", "day", "hour"), v => date.get(v).split("-").toList match {
+      case List(y, m, d, h) => (y, m)
+    }, "year=%s/month=%s")
 
 
 }
