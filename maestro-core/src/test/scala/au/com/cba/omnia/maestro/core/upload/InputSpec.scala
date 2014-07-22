@@ -15,7 +15,7 @@
 package au.com.cba.omnia.maestro.core
 package upload
 
-import org.specs2.mutable.Specification
+import org.specs2.Specification
 
 import java.io.File
 
@@ -23,184 +23,188 @@ import org.joda.time.DateTime
 
 import com.cba.omnia.edge.hdfs.{Error, Ok, Result}
 
-class InputSpec extends Specification {
-  "1_Timestamp breakup" should {
+class InputSpec extends Specification { def is = s2"""
 
-    """T1.1: return the correct breakup of year month day hour yyyyMMdd""" in new IsolatedTest {
-      Input.parseTimeStamp("yyyyMMdd", "20140531") must beLike {
-        case Ok(time) => {
-          time.getYear mustEqual 2014
-          time.getMonthOfYear mustEqual 5
-          time.getDayOfMonth mustEqual 31
-          time.getHourOfDay mustEqual 0
-        }
+Input properties
+================
+
+timestamp parsing
+-----------------
+
+  can parse yyyMMdd         $parse_yyyyMMdd
+  can parse yyyyMMddHHmm    $parse_yyyyMMddHHmm
+  can parse yyyyddMM        $parse_yyyyddMM
+  can parse yyMMdd          $parse_yyMMdd
+  can parse yyMMddHH        $parse_yyMMddHH
+  can parse yyyy-MM-dd-HH   $parse_yyyy_MM_dd_HH
+  can parse yyMM            $parse_yyMM
+  can parse yyyyMMdd_HHmmss $parse_yyyyMMdd_HHmmss
+
+control files
+-------------
+
+  .CTL is control file ext $ctlIsControl
+  .CTR is control file ext $ctrIsControl
+
+ findFiles filter
+ ----------------
+
+  reject longer prefix    $rejectLong
+  reject prefix in middle $rejectMiddle
+
+ categorize input files
+ ----------------------
+
+  accept files with correct timestamp      $aceptGoodTime
+  label control files                      $labelControlFiles
+  reject files without timestamp           $rejectNoTimestamp
+  reject files with multiple timestamps    $rejectMultupleTimestamp
+  reject files with wrong timestamp format $rejectBadTimeFormat
+  reject files with impossible timestamp   $rejectBadTime
+"""
+
+  def parse_yyyyMMdd =
+    Input.parseTimeStamp("yyyyMMdd", "20140531") must beLike {
+      case Ok(time) => {
+        time.getYear mustEqual 2014
+        time.getMonthOfYear mustEqual 5
+        time.getDayOfMonth mustEqual 31
+        time.getHourOfDay mustEqual 0
       }
     }
 
-    """T1.2: return the correct breakup of year month day hour yyyyMMddHHmm""" in new IsolatedTest {
-      Input.parseTimeStamp("yyyyMMddHHmm", "201405312300") must beLike {
-        case Ok(time) => {
-          time.getYear mustEqual 2014
-          time.getMonthOfYear mustEqual 5
-          time.getDayOfMonth mustEqual 31
-          time.getHourOfDay mustEqual 23
-        }
+  def parse_yyyyMMddHHmm =
+    Input.parseTimeStamp("yyyyMMddHHmm", "201405312300") must beLike {
+      case Ok(time) => {
+        time.getYear mustEqual 2014
+        time.getMonthOfYear mustEqual 5
+        time.getDayOfMonth mustEqual 31
+        time.getHourOfDay mustEqual 23
       }
     }
 
-    """T1.3: return the correct breakup of year month day hour early morning yyyyMMddHHmm""" in new IsolatedTest {
-      Input.parseTimeStamp("yyyyMMddHHmm", "201405310005") must beLike {
-        case Ok(time) => {
-          time.getYear mustEqual 2014
-          time.getMonthOfYear mustEqual 5
-          time.getDayOfMonth mustEqual 31
-          time.getHourOfDay mustEqual 0
-        }
+  def parse_yyyyddMM =
+    Input.parseTimeStamp("yyyyddMM", "20140512") must beLike {
+      case Ok(time) => {
+        time.getYear mustEqual 2014
+        time.getMonthOfYear mustEqual 12
+        time.getDayOfMonth mustEqual 5
+        time.getHourOfDay mustEqual 0
       }
     }
 
-    """T1.4: return the correct breakup of year month day hour yyyyddMM""" in new IsolatedTest {
-      Input.parseTimeStamp("yyyyddMM", "20140512") must beLike {
-        case Ok(time) => {
-          time.getYear mustEqual 2014
-          time.getMonthOfYear mustEqual 12
-          time.getDayOfMonth mustEqual 5
-          time.getHourOfDay mustEqual 0
-        }
+  def parse_yyMMdd =
+    Input.parseTimeStamp("yyMMdd", "140531") must beLike {
+      case Ok(time) => {
+        time.getYear mustEqual 2014
+        time.getMonthOfYear mustEqual 5
+        time.getDayOfMonth mustEqual 31
+        time.getHourOfDay mustEqual 0
       }
     }
 
-    """T1.5: return the correct breakup of year month day hour yyMMdd""" in new IsolatedTest {
-      Input.parseTimeStamp("yyMMdd", "140531") must beLike {
-        case Ok(time) => {
-          time.getYear mustEqual 2014
-          time.getMonthOfYear mustEqual 5
-          time.getDayOfMonth mustEqual 31
-          time.getHourOfDay mustEqual 0
-        }
+  def parse_yyMMddHH =
+    Input.parseTimeStamp("yyMMddHH", "14053105") must beLike {
+      case Ok(time) => {
+        time.getYear mustEqual 2014
+        time.getMonthOfYear mustEqual 5
+        time.getDayOfMonth mustEqual 31
+        time.getHourOfDay mustEqual 5
       }
     }
 
-    """T1.6: return the correct breakup of year month day hour yyMMddHH""" in new IsolatedTest {
-      Input.parseTimeStamp("yyMMddHH", "14053105") must beLike {
-        case Ok(time) => {
-          time.getYear mustEqual 2014
-          time.getMonthOfYear mustEqual 5
-          time.getDayOfMonth mustEqual 31
-          time.getHourOfDay mustEqual 5
-        }
+  def parse_yyyy_MM_dd_HH =
+    Input.parseTimeStamp("yyyy-MM-dd-HH", "2014-05-31-05") must beLike {
+      case Ok(time) => {
+        time.getYear mustEqual 2014
+        time.getMonthOfYear mustEqual 5
+        time.getDayOfMonth mustEqual 31
+        time.getHourOfDay mustEqual 5
       }
     }
 
-    """T1.7: return the correct breakup of year month day hour yyyy-MM-dd-HH""" in new IsolatedTest {
-      Input.parseTimeStamp("yyyy-MM-dd-HH", "2014-05-31-05") must beLike {
-        case Ok(time) => {
-          time.getYear mustEqual 2014
-          time.getMonthOfYear mustEqual 5
-          time.getDayOfMonth mustEqual 31
-          time.getHourOfDay mustEqual 5
-        }
+  def parse_yyMM =
+    Input.parseTimeStamp("yyMM", "1405") must beLike {
+      case Ok(time) => {
+        time.getYear mustEqual 2014
+        time.getMonthOfYear mustEqual 5
+        time.getDayOfMonth mustEqual 1
+        time.getHourOfDay mustEqual 0
       }
     }
 
-    """T1.8: return the correct breakup of year month day hour yyMM""" in new IsolatedTest {
-      Input.parseTimeStamp("yyMM", "1405") must beLike {
-        case Ok(time) => {
-          time.getYear mustEqual 2014
-          time.getMonthOfYear mustEqual 5
-          time.getDayOfMonth mustEqual 1
-          time.getHourOfDay mustEqual 0
-        }
+  def parse_yyyyMMdd_HHmmss =
+    Input.parseTimeStamp("yyyyMMdd_HHmmss", "20140612_230441") must beLike {
+      case Ok(time) => {
+        time.getYear mustEqual 2014
+        time.getMonthOfYear mustEqual 6
+        time.getDayOfMonth mustEqual 12
+        time.getHourOfDay mustEqual 23
+        time.getMinuteOfHour mustEqual 4
+        time.getSecondOfMinute mustEqual 41
       }
     }
 
-    """T1.9: return the correct breakup of year month day hour yyyyDDMM_HHmmss""" in new IsolatedTest {
-      Input.parseTimeStamp("yyyyMMdd_HHmmss", "20140612_230441") must beLike {
-        case Ok(time) => {
-          time.getYear mustEqual 2014
-          time.getMonthOfYear mustEqual 6
-          time.getDayOfMonth mustEqual 12
-          time.getHourOfDay mustEqual 23
-          time.getMinuteOfHour mustEqual 4
-          time.getSecondOfMinute mustEqual 41
-        }
-      }
-    }
+  def ctlIsControl =
+    Input.isControl(new File("local.CTL"))
+
+  def ctrIsControl =
+    Input.isControl(new File("local.CTR"))
+
+  def rejectLong = isolatedTest((dirs: IsolatedDirs) => {
+    val f1 = new File(dirs.testDir, "local20140506.txt")
+    val f2 = new File(dirs.testDir, "localname20140506.txt")
+    val data1 = Data(f1, new File(List("2014", "6", "5") mkString File.separator))
+    f1.createNewFile
+    f2.createNewFile
+
+    val fileList = Input.findFiles(dirs.testDir, "local", "yyyyddMM")
+    fileList mustEqual Ok(List(data1))
+  })
+
+  def rejectMiddle = isolatedTest((dirs: IsolatedDirs) => {
+    val f1 = new File(dirs.testDir, "yahoolocal20140506.txt")
+    val f2 = new File(dirs.testDir, "localname20140506.txt")
+    f1.createNewFile
+    f2.createNewFile
+
+    val fileList = Input.findFiles(dirs.testDir, "local", "yyyyddMM")
+    fileList mustEqual Ok(Nil)
+  })
+
+  def aceptGoodTime = {
+    val goodFile = new File("local20140506")
+    val src = Input.getInput(goodFile, "yyyyddMM")
+    src must beLike { case Ok(Data(_,_)) => ok }
   }
 
-  "2_ControlFile check" should {
-
-    """T2.1: Check if the file is control file .CTL""" in new IsolatedTest {
-      val local = File.createTempFile("local", ".CTL", testDir)
-      Input.isControl(local) must beTrue
-    }
-
-    """T2.2: Check if the file is control file .CTR""" in new IsolatedTest {
-      val local = File.createTempFile("local", ".CTR", testDir)
-      Input.isControl(local) must beTrue
-    }
+  def labelControlFiles = {
+    val ctrlFile = new File("local20140506.CTL")
+    val src = Input.getInput(ctrlFile, "yyyyddMM")
+    src must beLike { case Ok(Control(_)) => ok }
   }
 
-  "3_findFiles filter " should {
-
-    """T3.1: filter with similar names in prefix""" in new IsolatedTest {
-      val f1 = new File(testDir + File.separator + "local20140506.txt")
-      val f2 = new File(testDir + File.separator + "localname20140506.txt")
-      val data1 = Data(f1, new File(List("2014", "6", "5") mkString File.separator))
-      f1.createNewFile
-      f2.createNewFile
-
-      val fileList = Input.findFiles(testDir, "local", "yyyyddMM")
-      fileList mustEqual Ok(List(data1))
-    }
-
-    """T3.2: filter with similar names in middle""" in new IsolatedTest {
-      val f1 = new File(testDir + File.separator + "yahoolocal20140506.txt")
-      val f2 = new File(testDir + File.separator + "localname20140506.txt")
-      f1.createNewFile
-      f2.createNewFile
-
-      val fileList = Input.findFiles(testDir, "local", "yyyyddMM")
-      fileList mustEqual Ok(Nil)
-    }
+  def rejectNoTimestamp = {
+    val badFile = new File("local.txt")
+    val src = Input.getInput(badFile, "yyyyddMM")
+    src must beLike { case Error(_) => ok }
   }
 
-  "4_getInput files " should {
+  def rejectMultupleTimestamp = {
+    val badFile = new File("local20140506and20140507")
+    val src = Input.getInput(badFile, "yyyyddMM")
+    src must beLike { case Error(_) => ok }
+  }
 
-    """T4.1: reject files with no timestamp""" in new IsolatedTest {
-      val badFile = new File(testDir, "local.txt")
-      val src = Input.getInput(badFile, "yyyyddMM")
-      src must beLike { case Error(_) => ok }
-    }
+  def rejectBadTimeFormat = {
+    val badFile = new File("local201406")
+    val src = Input.getInput(badFile, "yyyyddMM")
+    src must beLike { case Error(_) => ok }
+  }
 
-    """T4.2: label control files""" in new IsolatedTest {
-      val ctrlFile = new File(testDir, "local20140506.CTL")
-      val src = Input.getInput(ctrlFile, "yyyyddMM")
-      src must beLike { case Ok(Control(_)) => ok }
-    }
-
-    """T4.3: reject files with wrong date format""" in new IsolatedTest {
-      val badFile = new File(testDir, "local201406")
-      val src = Input.getInput(badFile, "yyyyddMM")
-      src must beLike { case Error(_) => ok }
-    }
-
-    """T4.4: reject files with impossible date""" in new IsolatedTest {
-      val badFile = new File(testDir, "Tlocal20149999")
-      val src = Input.getInput(badFile, "yyyyddMM")
-      src must beLike { case Error(_) => ok }
-    }
-
-    """T4.5: reject files with multiple dates""" in new IsolatedTest {
-      val badFile = new File(testDir, "local20140506and20140507")
-      val src = Input.getInput(badFile, "yyyyddMM")
-      src must beLike { case Error(_) => ok }
-    }
-
-    """T4.6: accept files with one correct date""" in new IsolatedTest {
-      val goodFile = new File(testDir, "local20140506")
-      val src = Input.getInput(goodFile, "yyyyddMM")
-      src must beLike { case Ok(Data(_,_)) => ok }
-    }
+  def rejectBadTime = {
+    val badFile = new File("Tlocal20149999")
+    val src = Input.getInput(badFile, "yyyyddMM")
+    src must beLike { case Error(_) => ok }
   }
 }

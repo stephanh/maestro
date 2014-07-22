@@ -15,7 +15,7 @@
 package au.com.cba.omnia.maestro.core
 package upload
 
-import org.specs2.mutable.Specification
+import org.specs2.Specification
 
 import java.io.File
 
@@ -24,114 +24,129 @@ import org.apache.hadoop.conf.Configuration
 
 import com.cba.omnia.edge.hdfs.{Error, Hdfs, Ok, Result}
 
-class PushSpec extends Specification {
+class PushSpec extends Specification { def is = s2"""
 
-  "1_Archive" should {
+Push properties
+===============
 
-    """T1.1: Check if the file is archived """ in new IsolatedTest {
-      val local = new File(testDir, "local.txt")
-      local.createNewFile
+archive behaviour
+-----------------
 
-      val archiveCheck = Push.archiveFile(local, new File(archiveDirS))
-      archiveCheck mustEqual Ok(())
+  archive puts file in archive dir   $archivesFile
+  archive puts file in sub directory $archivesInSubDir
+  archive will overwrite duplicates  $archiveDuplicate
 
-      val destFile = new File(archiveDirS, "local.txt.gz")
-      destFile.isFile must beTrue
-    }
+push behaviour
+--------------
 
-    """T1.2: Check if we can archive file in sub directory""" in new IsolatedTest {
-      val local = new File(testDir, "local.txt")
-      local.createNewFile
-      val destDir = new File(archiveDirS, "subDir")
+  push copies to HDFS          $pushCopiesFile
+  push copies SAP file to HDFS $pushCopiesSapFile
+  push creates ingestion file  $pushCreatesIngestionFile
+  push fails on ingestion file $pushFailsOnIngestionFile
+  push fails on duplicates     $pushFailsOnDuplicate
 
-      val archiveCheck = Push.archiveFile(local, destDir)
-      archiveCheck mustEqual Ok(())
+"""
 
-      val destFile = new File(destDir, "local.txt.gz")
-      destFile.isFile must beTrue
-    }
+  def archivesFile = isolatedTest((dirs: IsolatedDirs) => {
+    val local = new File(dirs.testDir, "local.txt")
+    local.createNewFile
 
-    """T1.3: We succeed with duplicate files""" in new IsolatedTest {
-      val local = new File(testDir, "local.txt")
-      local.createNewFile
+    val archiveCheck = Push.archiveFile(local, dirs.archiveDir)
+    archiveCheck mustEqual Ok(())
 
-      val destFile = new File(archiveDirS, "local.txt.gz")
-      destFile.createNewFile
-      destFile.isFile must beTrue
+    val destFile = new File(dirs.archiveDir, "local.txt.gz")
+    destFile.isFile must beTrue
+  })
 
-      val archiveCheck2 = Push.archiveFile(local, new File(archiveDirS))
-      archiveCheck2 mustEqual Ok(())
-    }
-  }
+  def archivesInSubDir = isolatedTest((dirs: IsolatedDirs) => {
+    val local = new File(dirs.testDir, "local.txt")
+    local.createNewFile
+    val destDir = new File(dirs.archiveDir, "subDir")
 
-  "2_Push" should {
+    val archiveCheck = Push.archiveFile(local, destDir)
+    archiveCheck mustEqual Ok(())
 
-    """T2.1: Check if the file is copied to HDFS """ in new IsolatedTest {
-      val src  = Data(new File(testDir, "local20140506.txt"), new File("foo/bar"))
-      val dest = new Path(List(hdfsDirS, "foo", "bar", "local20140506.txt") mkString File.separator)
-      val conf = new Configuration
-      src.file.createNewFile
+    val destFile = new File(destDir, "local.txt.gz")
+    destFile.isFile must beTrue
+  })
 
-      val copyCheck = Push.push(src, archiveDirS, hdfsDirS).safe.run(conf)
-      copyCheck mustEqual Ok(Copied(src.file, dest))
+  def archiveDuplicate = isolatedTest((dirs: IsolatedDirs) => {
+    val local = new File(dirs.testDir, "local.txt")
+    local.createNewFile
 
-      val destExists = Hdfs.exists(dest).safe.run(conf)
-      destExists mustEqual Ok(true)
-    }
+    val destFile = new File(dirs.archiveDir, "local.txt.gz")
+    destFile.createNewFile
+    destFile.isFile must beTrue
 
-    """T2.2: Check if the SAP file is copied to HDFS """ in new IsolatedTest {
-      val src  = Data(new File(testDir, "ZCR_DW01_E001_20140612_230441.DAT"), new File("."))
-      val dest = new Path(hdfsDirS + File.separator + "ZCR_DW01_E001_20140612_230441.DAT")
-      val conf = new Configuration
-      src.file.createNewFile
+    val archiveCheck2 = Push.archiveFile(local, dirs.archiveDir)
+    archiveCheck2 mustEqual Ok(())
+  })
 
-      val copyCheck = Push.push(src, archiveDirS, hdfsDirS).safe.run(conf)
-      copyCheck mustEqual Ok(Copied(src.file, dest))
+  def pushCopiesFile = isolatedTest((dirs: IsolatedDirs) => {
+    val src  = Data(new File(dirs.testDir, "local20140506.txt"), new File("foo/bar"))
+    val dest = new Path(List(dirs.hdfsDirS, "foo", "bar", "local20140506.txt") mkString File.separator)
+    val conf = new Configuration
+    src.file.createNewFile
 
-      val destExists = Hdfs.exists(dest).safe.run(conf)
-      destExists mustEqual Ok(true)
-    }
+    val copyCheck = Push.push(src, dirs.archiveDirS, dirs.hdfsDirS).safe.run(conf)
+    copyCheck mustEqual Ok(Copied(src.file, dest))
 
-    """T2.3: Check if duplicates cause failure """ in new IsolatedTest {
-      val src  = Data(new File(testDir, "local20140506.txt"), new File("."))
-      val dest = new Path(hdfsDirS + File.separator + "local20140506.txt")
-      val conf = new Configuration
-      src.file.createNewFile
+    val destExists = Hdfs.exists(dest).safe.run(conf)
+    destExists mustEqual Ok(true)
+  })
 
-      val copyCheck = Push.push(src, archiveDirS, hdfsDirS).safe.run(conf)
-      copyCheck mustEqual Ok(Copied(src.file, dest))
+  def pushCopiesSapFile = isolatedTest((dirs: IsolatedDirs) => {
+    val src  = Data(new File(dirs.testDir, "ZCR_DW01_E001_20140612_230441.DAT"), new File("."))
+    val dest = new Path(dirs.hdfsDirS + File.separator + "ZCR_DW01_E001_20140612_230441.DAT")
+    val conf = new Configuration
+    src.file.createNewFile
 
-      val duplicateCheck = Push.push(src, archiveDirS, hdfsDirS).safe.run(conf)
-      duplicateCheck must beLike { case Error(_) => ok }
-    }
+    val copyCheck = Push.push(src, dirs.archiveDirS, dirs.hdfsDirS).safe.run(conf)
+    copyCheck mustEqual Ok(Copied(src.file, dest))
 
-    """T2.4: create an ingestion file in HDFS""" in new IsolatedTest {
-      val src  = Data(new File(testDir, "local20140506.txt"), new File("."))
-      val dest = new Path(hdfsDirS + File.separator + "local20140506.txt")
-      val flag = new Path(hdfsDirS + File.separator + "_INGESTION_COMPLETE")
-      val conf = new Configuration
-      src.file.createNewFile
+    val destExists = Hdfs.exists(dest).safe.run(conf)
+    destExists mustEqual Ok(true)
+  })
 
-      val copyCheck = Push.push(src, archiveDirS, hdfsDirS).safe.run(conf)
-      copyCheck mustEqual Ok(Copied(src.file, dest))
+  def pushCreatesIngestionFile = isolatedTest((dirs: IsolatedDirs) => {
+    val src  = Data(new File(dirs.testDir, "local20140506.txt"), new File("."))
+    val dest = new Path(dirs.hdfsDirS + File.separator + "local20140506.txt")
+    val flag = new Path(dirs.hdfsDirS + File.separator + "_INGESTION_COMPLETE")
+    val conf = new Configuration
+    src.file.createNewFile
 
-      val flagExists = Hdfs.exists(flag).safe.run(conf)
-      flagExists mustEqual Ok(true)
-    }
+    val copyCheck = Push.push(src, dirs.archiveDirS, dirs.hdfsDirS).safe.run(conf)
+    copyCheck mustEqual Ok(Copied(src.file, dest))
 
-    """T2.5: fail when ingestion file already exists""" in new IsolatedTest {
-      val src  = Data(new File(testDir, "local20140506.txt"), new File("."))
-      val dest = new Path(hdfsDirS + File.separator + "local20140506.txt")
-      val flag = new Path(hdfsDirS + File.separator + "_INGESTION_COMPLETE")
-      val conf = new Configuration
-      src.file.createNewFile
-      Hdfs.create(flag).safe.run(conf)
+    val flagExists = Hdfs.exists(flag).safe.run(conf)
+    flagExists mustEqual Ok(true)
+  })
 
-      val copyCheck = Push.push(src, archiveDirS, hdfsDirS).safe.run(conf)
-      copyCheck must beLike { case Error(_) => ok }
+  def pushFailsOnIngestionFile = isolatedTest((dirs: IsolatedDirs) => {
+    val src  = Data(new File(dirs.testDir, "local20140506.txt"), new File("."))
+    val dest = new Path(dirs.hdfsDirS + File.separator + "local20140506.txt")
+    val flag = new Path(dirs.hdfsDirS + File.separator + "_INGESTION_COMPLETE")
+    val conf = new Configuration
+    src.file.createNewFile
+    Hdfs.create(flag).safe.run(conf)
 
-      val destExists = Hdfs.exists(dest).safe.run(conf)
-      destExists mustEqual Ok(false)
-    }
-  }
+    val copyCheck = Push.push(src, dirs.archiveDirS, dirs.hdfsDirS).safe.run(conf)
+    copyCheck must beLike { case Error(_) => ok }
+
+    val destExists = Hdfs.exists(dest).safe.run(conf)
+    destExists mustEqual Ok(false)
+  })
+
+  def pushFailsOnDuplicate = isolatedTest((dirs: IsolatedDirs) => {
+    val src  = Data(new File(dirs.testDir, "local20140506.txt"), new File("."))
+    val dest = new Path(dirs.hdfsDirS + File.separator + "local20140506.txt")
+    val conf = new Configuration
+    src.file.createNewFile
+
+    val copyCheck = Push.push(src, dirs.archiveDirS, dirs.hdfsDirS).safe.run(conf)
+    copyCheck mustEqual Ok(Copied(src.file, dest))
+
+    val duplicateCheck = Push.push(src, dirs.archiveDirS, dirs.hdfsDirS).safe.run(conf)
+    duplicateCheck must beLike { case Error(_) => ok }
+  })
 }

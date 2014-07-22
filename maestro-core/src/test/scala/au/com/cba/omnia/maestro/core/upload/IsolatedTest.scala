@@ -20,14 +20,24 @@ import scala.util.Random
 import java.io.File
 import java.io.FileNotFoundException
 
-import org.specs2.mutable.After
-import org.specs2.specification.Scope
+import org.specs2.execute.AsResult
+import org.specs2.specification.Fixture
 
-/** Trait that provides clean test directories for Upload tests */
-trait IsolatedTest extends Scope with After {
+/** Isolated directories for upload tests */
+case class IsolatedDirs(rootDir: File) {
+  val testDir = new File(rootDir, "testInputDirectory")
+  val testDirS = testDir.toString
 
-  // machinery to find a suitable isolated root dir for temporary test folders
-  val random = new Random()
+  val archiveDir = new File(rootDir, "testArchiveDirectory")
+  val archiveDirS = archiveDir.toString
+
+  val hdfsDir = new File(rootDir, "testHdfsDirectory")
+  val hdfsDirS = hdfsDir.toString
+}
+
+/** Provides clean test directories for Upload tests */
+object isolatedTest extends Fixture[IsolatedDirs] {
+  val random = new Random() // Random is thread-safe
   val tmpDir = System.getProperty("java.io.tmpdir")
 
   def findUniqueRoot(): File = {
@@ -36,34 +46,25 @@ trait IsolatedTest extends Scope with After {
     if (unique) possibleDir else findUniqueRoot() // don't expect to recurse often
   }
 
-  // isolated folders for tests to refer to
-  val rootDir = findUniqueRoot()
+  // delete directory plus contents
+  // WARNING: deleteAll will follow symlinks!
+  // Java 7 supports symlinks, so once we drop Java 6 support we should be
+  // able to do this properly, or use a library function that does it properly
+  def deleteAll(file: File) {
+    if (file.isDirectory)
+      file.listFiles.foreach(deleteAll)
+    if (file.exists)
+      file.delete
+  }
 
-  val testDir = new File(rootDir, "testInputDirectory")
-  val testDirS = testDir.toString
+  def apply[R: AsResult](test: IsolatedDirs => R) = {
+    val dirs = IsolatedDirs(findUniqueRoot())
 
-  val archiveDir = new File(rootDir, "testArchiveDirectory")
-  val archiveDirS = archiveDir.toString
-
-  // TODO hdfsDir in isolated temp dir: should be in Hdfs instead
-  val hdfsDir = new File(rootDir, "testHdfsDirectory")
-  val hdfsDirS = hdfsDir.toString
-
-  List(testDir, archiveDir, hdfsDir) foreach (dir => {
-    val created = dir.mkdir
-    if (!created) throw new FileNotFoundException(dir.toString)
-  })
-
-  // after the test has completed, remove the temporary dir
-  // TODO use a library which implements the equivalent of deleteAll
-  // TODO avoid following symlinks (hopefully the above todo gives us this for free)
-  def after {
-    def deleteAll(file: File) {
-      if (file.isDirectory)
-        file.listFiles.foreach(deleteAll)
-      if (file.exists)
-        file.delete
-    }
-    deleteAll(rootDir)
+    List(dirs.testDir, dirs.archiveDir, dirs.hdfsDir) foreach (dir =>
+      if (!dir.mkdir) throw new FileNotFoundException(dir.toString)
+    )
+    val result = AsResult(test(dirs))
+    deleteAll(dirs.rootDir)
+    result
   }
 }
