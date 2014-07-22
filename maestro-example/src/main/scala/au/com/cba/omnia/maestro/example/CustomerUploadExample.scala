@@ -24,14 +24,14 @@ import au.com.cba.omnia.maestro.example.thrift.Customer
 import com.cba.omnia.edge.hdfs.{Error, Ok, Result}
 
 class CustomerUploadExample(args: Args) extends Maestro[Customer](args) {
-  val env         = args("env")
-  val bigDataRoot = args("BIGDATA_ROOT")
+  val hdfsRoot    = args("hdfsRoot")
+  val sourceRoot  = args("sourceRoot")
   val archiveRoot = args("archivedir")
   val domain      = "customer"
   val timeFormat  = "yyyyMMddHHmm"
 
-  val byDateResult = Maestro.upload(domain, "by_date", timeFormat, bigDataRoot, archiveRoot, env)
-  val byIdResult   = Maestro.upload(domain, "by_id", timeFormat, bigDataRoot, archiveRoot, env)
+  val byDateResult = Maestro.upload(domain, "by_date", timeFormat, sourceRoot, archiveRoot, hdfsRoot)
+  val byIdResult   = Maestro.upload(domain, "by_id", timeFormat, sourceRoot, archiveRoot, hdfsRoot)
 
   List(byDateResult, byIdResult).sequence_ match {
     case Error(_) => {

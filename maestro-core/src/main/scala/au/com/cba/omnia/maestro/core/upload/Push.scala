@@ -17,7 +17,7 @@ package upload
 
 import java.io.File
 
-import org.apache.hadoop.fs.{ Path, FileSystem }
+import org.apache.hadoop.fs.Path
 
 import com.cba.omnia.edge.hdfs.{Hdfs, Result}
 
@@ -53,8 +53,8 @@ object Push {
 
     for {
       // fail if any traces of the file already exist on HDFS
-      dup    <- Hdfs.exists(hdfsDestFile)
-      _      <- EdgeOp.failHdfsIf(dup)(s"${src.file.getName} already exists at $hdfsDestFile")
+      dup     <- Hdfs.exists(hdfsDestFile)
+      _       <- EdgeOp.failHdfsIf(dup)(s"${src.file.getName} already exists at $hdfsDestFile")
 
       dupFlag <- Hdfs.exists(hdfsFlagFile)
       _       <- EdgeOp.failHdfsIf(dupFlag)(s"${src.file.getName} already has an ingestion complete flag at $hdfsFlagFile")
@@ -65,15 +65,10 @@ object Push {
       // copy file over
       dirOk   <- Hdfs.mkdirs(hdfsDestDir) // returns true if directory already exists
       _       <- EdgeOp.failHdfsIf(!dirOk)("$hdfsDestDir could not be created")
-
-      _      <- Hdfs.copyFromLocalFile(src.file, hdfsDestDir)
-      copied <- Hdfs.exists(hdfsDestFile) // cannot clean up on failure as Hdfs does not have the required operations
-      _      <- EdgeOp.failHdfsIf(!copied)(s"${src.file.getName} copy succeeded but $hdfsDestFile does not exist")
+      _       <- Hdfs.copyFromLocalFile(src.file, hdfsDestDir)
 
       // create ingestion complete flag
-      _      <- Hdfs.create(hdfsFlagFile)
-      flagOk <- Hdfs.exists(hdfsFlagFile)
-      _      <- EdgeOp.failHdfsIf(!flagOk)("could not create ingestion complete flag for ${src.file.getName}")
+      _       <- Hdfs.create(hdfsFlagFile)
 
       // archive file
       _      <- Hdfs.result(archiveFile(src.file, archiveDestDir))

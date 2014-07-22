@@ -54,7 +54,7 @@ object Input {
       .traverse(getInput(_, timeFormat))
   }
 
-  /** gets the input file corresponding to a file */
+  /** Gets the input file corresponding to a file */
   def getInput(file: File, timeFormat: String): Result[Input] =
     if (isControl(file))
       Result.ok(Control(file))

@@ -37,8 +37,8 @@ import au.com.cba.omnia.maestro.core.upload._
   * the files.
   *
   * For a given `domain` and `tableName`, [[upload]] copies data files from
-  * the standard location: `\$bigDataRoot/dataFeed/\$domain`, to the standard
-  * HDFS location: `\$env/source/\$domain/\$tableName/<year>/<month>/<optional>/<datetime>/<directories>`.
+  * the standard local location: `\$sourceRoot/dataFeed/\$domain`, to the
+  * standard HDFS location: `\$hdfsRoot/source/\$domain/\$tableName`.
   *
   * Only use [[customUpload]] if we are required to use non-standard locations.
   */
@@ -48,17 +48,20 @@ trait Upload {
     * Pushes source files onto HDFS and archives them locally.
     *
     * `upload` expects data files intended for HDFS to be placed in
-    * the local folder `\$bigDataRoot/dataFeed/\$domain`. Different source systems
-    * will use different values for `\$domain`. Data files will look like
-    * `\$tableName<separator>\$timeFormat.<extension>`. `\$tableName` and
-    * `\$timeFormat` will vary for each source system.
+    * the local folder `\$sourceRoot/dataFeed/\$domain`. Different source systems
+    * will use different values for `domain`. Data files will look like
+    * `\$tableName<separator><timeStamp>.<extension>`. `tableName` and
+    * the `<timeStamp>` format will vary for each source system. The `timeFormat`
+    * parameter specifies the format `<timeStamp>` should have.
     *
     * Each data file will be copied onto HDFS as the following file:
-    * `\$env/source/\$domain/\$tableName/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>`.
+    * `\$hdfsRoot/source/\$domain/\$tableName/<year>/<month>/<originalFileName>`.
     *
     * Data files are also gzipped and archived on the local machine. Each data
     * file is archived as:
-    * `\$archiveRoot/dataFeed/\$domain/\$tableName/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>.gz`.
+    * `\$archiveRoot/dataFeed/\$domain/\$tableName/<year>/<month>/<originalFileName>.gz`.
+    *
+    * (These destination paths may change slightly depending on the format of the timeStamp.)
     *
     * Some files placed on the local machine are control files. These files
     * are not intended for HDFS and are ignored by `upload`. `upload` will log
@@ -74,26 +77,26 @@ trait Upload {
     * @param domain: Domain (source system name)
     * @param tableName: Table name (file prefix)
     * @param timeFormat: Timestamp format
-    * @param bigDataRoot: Root directory of incoming data files
+    * @param sourceRoot: Root directory of incoming data files
     * @param archiveRoot: Root directory of the local archive
-    * @param env: HDFS environment
+    * @param hdfsRoot: Root directory of HDFS
     * @return Any error occuring when uploading files
     */
   def upload(domain: String, tableName: String, timeFormat: String,
-    bigDataRoot: String, archiveRoot: String, env: String): Result[Unit] = {
+    sourceRoot: String, archiveRoot: String, hdfsRoot: String): Result[Unit] = {
     val logger = Logger.getLogger("Upload")
 
     logger.info("Start of upload")
-    logger.info(s"domain      = $domain") // domain is only used for logging
+    logger.info(s"domain      = $domain")
     logger.info(s"tableName   = $tableName")
     logger.info(s"timeFormat  = $timeFormat")
-    logger.info(s"bigDataRoot = $bigDataRoot")
+    logger.info(s"sourceRoot  = $sourceRoot")
     logger.info(s"archiveRoot = $archiveRoot")
-    logger.info(s"env         = $env")
+    logger.info(s"hdfsRoot    = $hdfsRoot")
 
-    val locSourceDir   = List(bigDataRoot, "dataFeed", domain)            mkString File.separator
+    val locSourceDir   = List(sourceRoot,  "dataFeed", domain)            mkString File.separator
     val archiveDir     = List(archiveRoot, "dataFeed", domain, tableName) mkString File.separator
-    val hdfsLandingDir = List(env,         "source",   domain, tableName) mkString File.separator
+    val hdfsLandingDir = List(hdfsRoot,    "source",   domain, tableName) mkString File.separator
 
     val conf = new Configuration
     val result: Result[Unit] = Upload.uploadImpl(tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir).safe.run(conf)
@@ -116,11 +119,12 @@ trait Upload {
     * files, where to copy them, and where to archive them.
     *
     * Data files are found in the local folder `\$locSourceDir`. They are copied
-    * to `\$hdfsLandingDir/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>`,
-    * and archived at `\$archiveDir/<year>/<month>/<optional>/<datetime>/<directories>/<originalFileName>.gz`.
+    * to `\$hdfsLandingDir/<year>/<month>/<originalFileName>`,
+    * and archived at `\$archiveDir/<year>/<month>/<originalFileName>.gz`. (These
+    * directories may change slightly depending on the timestamp format.)
+    *
     * In all other respects `customUpload` behaves the same as [[upload]].
     *
-    * @param domain: Domain (source system name)
     * @param tableName: Table name (file prefix)
     * @param timeFormat: Timestamp format
     * @param locSourceDir: Local source landing directory
@@ -128,12 +132,11 @@ trait Upload {
     * @param hdfsLandingDir: HDFS landing directory
     * @return Any error occuring when uploading files
     */
-  def customUpload(domain: String, tableName: String, timeFormat: String,
+  def customUpload(tableName: String, timeFormat: String,
     locSourceDir: String, archiveDir: String, hdfsLandingDir: String): Result[Unit] = {
     val logger = Logger.getLogger("Upload")
 
     logger.info("Start of custom upload")
-    logger.info(s"domain         = $domain") // domain is only used for logging
     logger.info(s"tableName      = $tableName")
     logger.info(s"timeFormat     = $timeFormat")
     logger.info(s"locSourceDir   = $locSourceDir")
@@ -143,12 +146,11 @@ trait Upload {
     val conf = new Configuration
     val result = Upload.uploadImpl(tableName, timeFormat, locSourceDir, archiveDir, hdfsLandingDir).safe.run(conf)
 
-    val args = s"$domain $tableName"
     result match {
-      case Ok(())                => logger.info(s"Custom upload ended for $args")
-      case Error(This(msg))      => logger.error(s"Custom upload failed for $args: $msg")
-      case Error(That(exn))      => logger.error(s"Custom upload failed for $args", exn)
-      case Error(Both(msg, exn)) => logger.error(s"Custom upload failed for $args: $msg", exn)
+      case Ok(())                => logger.info(s"Custom upload ended from $locSourceDir")
+      case Error(This(msg))      => logger.error(s"Custom upload failed from $locSourceDir: $msg")
+      case Error(That(exn))      => logger.error(s"Custom upload failed from $locSourceDir", exn)
+      case Error(Both(msg, exn)) => logger.error(s"Custom upload failed from $locSourceDir: $msg", exn)
     }
 
     result

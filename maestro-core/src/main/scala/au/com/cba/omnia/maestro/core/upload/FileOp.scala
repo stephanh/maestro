@@ -26,9 +26,9 @@ import com.google.common.io.Files
 import scalaz.\/
 
 /**
-  * Operations on files that belong ... elsewhere.
+  * Operations on files
   *
-  * TODO move these operations to the appropriate place in ???
+  * TODO move these operations to the appropriate place in omnitool
   */
 object FileOp {
   /**
