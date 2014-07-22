@@ -125,7 +125,7 @@ object HivePartition {
    * Hive style partition by year, month. Expects to the specified field to have data in
    * the format `yyyy-mm-dd-hh`.
    */
-  def byHour[A](date: Field[A, String]): Partition[A, (String, String)] =
+  def byMonth[A](date: Field[A, String]): Partition[A, (String, String)] =
     Partition(List("year", "month", "day", "hour"), v => date.get(v).split("-").toList match {
       case List(y, m, d, h) => (y, m)
     }, "year=%s/month=%s")
