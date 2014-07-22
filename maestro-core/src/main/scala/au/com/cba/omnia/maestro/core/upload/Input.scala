@@ -61,7 +61,7 @@ object Input {
     else
       for {
         timeStamp <- getTimeStamp(file)
-        date <- parseTimeStamp(timeFormat, timeStamp)
+        date      <- parseTimeStamp(timeFormat, timeStamp)
       } yield Data(file, pathToFile(date, timeFormat))
 
   /** get the timestamp from the file name */
